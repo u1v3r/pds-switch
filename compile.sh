@@ -1,3 +1,3 @@
 #!/bin/bash
 
-gcc -lpcap main.c -o pds-switch
+gcc -lpcap -lpthread main.c -o pds-switch
