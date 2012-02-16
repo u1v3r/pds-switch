@@ -1,0 +1,7 @@
+# depslib dependency file v1.0
+1329154880 source:/home/rdy/vut/pds/pds-switch/main.c
+	<pcap.h>
+	<string.h>
+	<stdlib.h>
+	<features.h>
+
