@@ -69,6 +69,9 @@ void init_switch(){
         //vytvorenie samostatného vlákna pre každé rozhranie
         pthread_create(&threads[i++],NULL,open_device,(void *) d->name);
 
+        //vlozenie rozhrani do stat tabulky
+        add_stat_value(d->name);
+
         //pocet vytvorenych vlakien
         counter++;
     }
@@ -91,6 +94,8 @@ void *open_device(void *name){
 
     pcap_t *handler;
     const char *device_name = (char *) name;
+
+
 
     /*
     struct bpf_program fp;
@@ -139,6 +144,7 @@ void *open_device(void *name){
  */
 void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char *packet){
 
+    struct stat_table *founded;
     struct ether_header *ether;
     ether = (struct ether_header*)(packet);
 
@@ -168,8 +174,40 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
     printf("\n");
     #endif
 
-    pthread_mutex_lock(&mutex);
-    add_value(source_mac,args);
-    pthread_mutex_unlock(&mutex);
 
+    pthread_mutex_lock(&mutex);
+    //vlozi mac adresu rozhrania do cam tabulky
+    add_value(source_mac,args);
+    //zapise statistiky
+    founded = find_stat_value(args);
+    founded->recv_frames = founded->recv_frames + 1;
+    founded->recv_bytes = founded->recv_bytes + header->len;
+    pthread_mutex_unlock(&mutex);
 }
+
+struct stat_table *find_stat_value(char *port){
+
+    struct stat_table *founded;
+
+    founded = stat_table_t[make_hash(port)];
+
+    if(founded == NULL) return NULL;
+
+    return founded;
+}
+
+struct stat_table *add_stat_value(char *port){
+
+    struct stat_table *add;
+
+    unsigned hash_value = make_hash(port);
+    add = (struct stat_table *) malloc(sizeof(*add));
+    add->port = port;
+    add->recv_bytes = 0;
+    add->recv_frames = 0;
+    add->sent_bytes = 0;
+    add->sent_frames = 0;
+    stat_table_t[hash_value] = add;
+
+    return add;
+};

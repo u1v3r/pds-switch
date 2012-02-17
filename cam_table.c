@@ -89,8 +89,6 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], char *port){
     }
 
 
-
-
     /*else {//odstran stary a vloz nove hodnoty
         #ifdef DEBUG
         printf("Replacing row in cam_table\n");
@@ -106,6 +104,7 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], char *port){
     */
 
     print_cam_table();
+    print_cam_table_stats();
 
     return founded;
 };
@@ -194,4 +193,26 @@ void cam_table_age_checker(){
 
         }
     }
+}
+
+void print_cam_table_stats(){
+
+    struct stat_table *row;
+    int i = 0;
+
+
+    printf("---------------------------------------\n");
+    printf("------------------STAT-----------------\n");
+    printf("---------------------------------------\n");
+    printf("Iface\tSent-B\tSent-frm\tRecv-B\tRecv-frm\n");
+    for(i = 0; i < HASH_LENGTH;i++){
+        if(stat_table_t[i] == NULL) continue;
+
+        printf("%s\t",stat_table_t[i]->port);
+        printf("%i\t",stat_table_t[i]->sent_bytes);
+        printf("%i\t",stat_table_t[i]->sent_frames);
+        printf("%i\t",stat_table_t[i]->recv_bytes);
+        printf("%i\t\n",stat_table_t[i]->recv_frames);
+    }
+    printf("---------------------------------------\n");
 }

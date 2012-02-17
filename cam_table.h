@@ -10,9 +10,9 @@
 
 struct cam_table{
     struct cam_table *next;
-    char *port;
-    u_char *source_mac;
-    unsigned long age;
+    char *port;             //meno rozhranie
+    u_char *source_mac;     //adresa prichadzajuceho paketu
+    unsigned long age;      //urcuje platnost zaznamu
 };
 static struct cam_table *cam_table_t[HASH_LENGTH];
 unsigned make_hash(char *);
