@@ -6,6 +6,8 @@
 #define MAXBYTES2CAPTURE 2048
 #define SIZE_ETHERNET 14
 
+static char errbuf[PCAP_ERRBUF_SIZE];       //error buffer
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void init_switch();
 
