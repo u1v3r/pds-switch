@@ -17,6 +17,7 @@
 				</Compiler>
 				<Linker>
 					<Add library="libpcap" />
+					<Add library="pthread" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -35,12 +36,36 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="cam_table.c">
+			<Option compilerVar="CC" />
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="cam_table.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="switch.c">
+			<Option compilerVar="CC" />
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="switch.h">
+			<Option target="&lt;{~None~}&gt;" />
 		</Unit>
 		<Extensions>
 			<code_completion />
 			<debugger />
+			<DoxyBlocks>
+				<comment_style block="0" line="0" />
+				<doxyfile_project />
+				<doxyfile_build />
+				<doxyfile_warnings />
+				<doxyfile_output />
+				<doxyfile_dot />
+				<general />
+			</DoxyBlocks>
+			<envvars />
 		</Extensions>
 	</Project>
 </CodeBlocks_project_file>
