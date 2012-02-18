@@ -176,8 +176,7 @@ void cam_table_age_checker(){
 
     while(0 == 0){
         //kazdych n sekund skontroluj ci tabulka neobsahuje stare zaznamy
-        sleep(30);
-        exit(EXIT_SUCCESS);
+        sleep(DELETE_WAIT_TIME);
         #ifdef DEBUG
         printf("\n\nCam table age checking...\n\n");
         #endif
