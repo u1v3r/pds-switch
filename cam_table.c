@@ -17,6 +17,7 @@ unsigned make_ether_hash(u_char *value){
         hash_value = *(value + i) + 11 * hash_value;
     }
 
+
     return (hash_value % HASH_LENGTH);
 }
 
@@ -111,15 +112,12 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
     return founded;
 };
 
-
+/** Porovnava dva u_char retazce a vrati 1 ak sa rovnaju, inak 0 */
 int comapre_u_char(u_char *a,u_char *b, int char_size){
-    int i;
 
-    printf("a %x\n",*(a + 1));
-    printf("b %x\n",*(b + 1));
+    int i;
     for(i = 0; i < char_size ; i++){
-        //printf("char a: %d\n char b: %d\n",*(a + i),*(b + i));
-        //if(*(a + 1) != *(b + 1)) return 0;
+        if(*(a + 1) != *(b + 1)) return 0;
     }
 
     return 1;
@@ -137,6 +135,7 @@ char *copy_dupl(u_char *value){
 
 }
 
+/** Na vystup vypise mac adresu */
 void print_mac_adress(u_char mac[ETHER_ADDR_LEN]){
 
     int i = ETHER_ADDR_LEN;
@@ -149,9 +148,9 @@ void print_mac_adress(u_char mac[ETHER_ADDR_LEN]){
 
 }
 
+/** Na vystup vypise cam tabulku */
 void print_cam_table(){
 
-    struct cam_table *row;
     int i = 0;
     time_t cur_time = time(NULL);
 
@@ -169,7 +168,7 @@ void print_cam_table(){
 
 }
 
-/** Konstroluje tabulku a odstranuje stare zaznamy */
+/** Kontroluje tabulku a odstranuje stare zaznamy */
 void cam_table_age_checker(){
 
     time_t cur_time;
@@ -177,7 +176,8 @@ void cam_table_age_checker(){
 
     while(0 == 0){
         //kazdych n sekund skontroluj ci tabulka neobsahuje stare zaznamy
-        sleep(DELETE_WAIT_TIME);
+        sleep(30);
+        exit(EXIT_SUCCESS);
         #ifdef DEBUG
         printf("\n\nCam table age checking...\n\n");
         #endif
@@ -198,10 +198,7 @@ void cam_table_age_checker(){
 
 void print_cam_table_stats(){
 
-    struct stat_table *row;
     int i = 0;
-
-
 
     printf("\n------------------STAT-----------------\n");
     printf("Iface\tSent-B\tSent-frm\tRecv-B\tRecv-frm\n");

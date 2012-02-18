@@ -5,7 +5,6 @@
 #define DELETE_WAIT_TIME 20
 #define HASH_LENGTH 101
 
-
 #include <stdint.h>
 
 struct cam_table{
@@ -23,5 +22,6 @@ char *copy_dupl(u_char *);
 void print_mac_adress(u_char mac[ETHER_ADDR_LEN]);
 void print_cam_table();
 void cam_table_age_checker();
+void print_cam_table_stats();
 
 #endif // CAM_TABLE_H_INCLUDED

@@ -5,6 +5,7 @@
 #include <net/ethernet.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <libnet.h>
 
 #include "switch.h"
 #include "cam_table.c"
@@ -24,7 +25,8 @@ void init_switch(){
 
     int threads_count = DEFAULT_PORTS_COUNT;
     pcap_if_t *d,*devices;
-    int i,j,counter = 0;
+    int i = 0;
+    int j,counter = 0;
 
 
     if( (pcap_findalldevs(&devices,errbuf)) == -1){
@@ -59,7 +61,7 @@ void init_switch(){
 
         #ifdef DEBUG
         printf("device: %s,",d->name);
-        //printf("address: %d,",d->addresses);
+        //printf("address: %d,",d->addresses->addr);
         printf("desc: %s,",d->description);
         printf("flag: %d\n",d->flags);
         #endif
@@ -186,15 +188,35 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
 
     pthread_mutex_unlock(&mutex);
 
-    //presposle paket
+
+    //ak je cielovym portom port na switch, tak neposielaj dalej
+    if(comapre_u_char(get_mac_adress(args),dest_mac,ETHER_ADDR_LEN)){
+        #ifdef DEBUG
+        printf("Cielova mac adresa paketu sa zhoduje s adresou portu %s, neposielam paket dalej:\n ",args);
+        print_mac_adress(get_mac_adress(args));
+        printf("==");
+        print_mac_adress(dest_mac);
+        printf("\n");
+        #endif
+        return;
+    }
 
     //ak sa cielova mac nachadza v cam table, tak posli na dany port
     struct cam_table *cam_table_found = find_packet_value(dest_mac);
 
-    //mac adresa sa nachadza
+    //mac adresa sa nachadza v cam tabulke
     if(cam_table_found != NULL){
 
-
+        //treba posielat len pakety, ktore danej adrese patria
+        if( comapre_u_char(cam_table_found->source_mac,dest_mac,ETHER_ADDR_LEN) == 0) {
+            #ifdef DEBUG
+            print_mac_adress(cam_table_found->source_mac);
+            printf(" != ");
+            print_mac_adress(dest_mac);
+            printf("\n");
+            #endif
+            return;
+        }
 
         #ifdef DEBUG
         printf("Posielam packet z rozhrania %s cez rozhranie %s z adresy ",args,cam_table_found->port);
@@ -213,7 +235,7 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
         #ifdef DEBUG
         printf("Rozhranie som pre adresu ");
         print_mac_adress(dest_mac);
-        printf(" som nenasiel, posielam paket na rozhrania:\n");
+        printf("nenasiel, posielam paket na rozhrania:\n");
         #endif
 
         pcap_t *handler;
@@ -223,8 +245,13 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
             //ak neobsahuje ziadny zaznam
             if(stat_table_t[i] == NULL) continue;
 
-            //port na ktory sa posiela je zhodny s odosialajucim portom
-            if(stat_table_t[i]->port == (char *)args) continue;
+            //port na ktory sa posiela je zhodny s odosialajucim portom, netreba posielat
+            if(stat_table_t[i]->port == args) {
+                #ifdef DEBUG
+                printf("Port %s sa zhoduje s portom %s, neposielam unicast\n",stat_table_t[i]->port,args);
+                #endif
+                continue;
+            }
 
             #ifdef DEBUG
             printf("%s",stat_table_t[i]->port);
@@ -304,10 +331,26 @@ void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *
             exit(-1);
         }
 
+        pthread_mutex_lock(&mutex);
         founded->sent_bytes = founded->sent_bytes + sent_bytes;
         founded->sent_frames = founded->sent_frames + 1;
+        pthread_mutex_unlock(&mutex);
 
     }
 }
 
+/** Zisti mac adresu daneho rozhrania */
+u_char *get_mac_adress(char* port){
+
+    libnet_t *l = libnet_init(LIBNET_LINK, port, errbuf);
+    if ( l == NULL ) {
+        fprintf(stderr, "libnet_init() failed: %s\n", errbuf);
+        exit(-1);
+    }
+
+    struct libnet_ether_addr *mac_addr = libnet_get_hwaddr(l);
+    libnet_destroy(l);
+
+    return mac_addr->ether_addr_octet;
+}
 

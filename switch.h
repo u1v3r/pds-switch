@@ -7,6 +7,7 @@
 
 #define MAXBYTES2CAPTURE 2048
 #define SIZE_ETHERNET 14
+#define DEBUG 1
 
 struct stat_table{
     u_char *port;
@@ -28,6 +29,6 @@ void *open_device(void *);
 struct stat_table *find_stat_value(u_char *);
 struct stat_table *add_stat_value(u_char *);
 void send_unicast(const u_char *,const struct pcap_pkthdr *,u_char *);
-
+u_char *get_mac_adress(char*);
 
 #endif // SWITCH_H_INCLUDED
