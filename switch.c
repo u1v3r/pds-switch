@@ -5,7 +5,6 @@
 #include <net/ethernet.h>
 #include <pthread.h>
 #include <sys/types.h>
-#include <libnet.h>
 
 #include "switch.h"
 #include "cam_table.c"
@@ -30,7 +29,7 @@ void init_switch(){
 
     if( (pcap_findalldevs(&devices,errbuf)) == -1){
         fprintf(stderr,"ERROR: Can't find ethernet devices");
-        exit(2);
+        exit(-1);
     }
 
     //inicializacia pamate pre vlakna
@@ -70,7 +69,7 @@ void init_switch(){
         pthread_create(&threads[i++],NULL,open_device,(void *) d->name);
 
         //vlozenie rozhrani do stat tabulky
-        add_stat_value(d->name);
+        add_stat_value((u_char *)d->name);
 
         //pocet vytvorenych vlakien
         counter++;
@@ -111,7 +110,7 @@ void *open_device(void *name){
 
     if((handler = pcap_open_live(device_name,MAXBYTES2CAPTURE,PROMISCUOUS_MODE,512,errbuf)) == NULL){
         fprintf(stderr, "ERROR: %s\n", errbuf);
-        exit(2);
+        exit(-1);
     }
 
 /*
@@ -134,6 +133,7 @@ void *open_device(void *name){
 */
     if(pcap_setdirection(handler,PCAP_D_IN) == -1){
         fprintf(stderr,"ERROR: Can't set packet capture direction");
+        exit(-1);
     };
 
     pcap_loop(handler,-1,process_packet,(u_char *) name);
@@ -157,8 +157,8 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
     int j = 0;
 
     printf("-------------------------------------\n");
-    printf("DEVICE: %s\n",args);
-    printf("Source Address:  ");
+    printf("Source port: %s\n",args);
+    printf("Source address:  ");
     do{
         printf("%s%x",(i == ETHER_ADDR_LEN) ? " " : ":",source_mac[j++]);
     }while(--i > 0);
@@ -176,31 +176,85 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
 
 
     pthread_mutex_lock(&mutex);
+
     //vlozi mac adresu rozhrania do cam tabulky
     add_value(source_mac,args);
     //zapise statistiky
     founded = find_stat_value(args);
     founded->recv_frames = founded->recv_frames + 1;
     founded->recv_bytes = founded->recv_bytes + header->len;
+
     pthread_mutex_unlock(&mutex);
+
+    //presposle paket
+
+    //ak sa cielova mac nachadza v cam table, tak posli na dany port
+    struct cam_table *cam_table_found = find_packet_value(dest_mac);
+
+    //mac adresa sa nachadza
+    if(cam_table_found != NULL){
+
+
+
+        #ifdef DEBUG
+        printf("Posielam packet z rozhrania %s cez rozhranie %s z adresy ",args,cam_table_found->port);
+        print_mac_adress(source_mac);
+        printf("na adresu ");
+        print_mac_adress(dest_mac);
+        printf("\n");
+        #endif
+
+        send_unicast(packet,header,cam_table_found->port);
+
+
+    }
+    else{//rozhranie sa v cam tabulke nenechacza
+
+        #ifdef DEBUG
+        printf("Rozhranie som pre adresu ");
+        print_mac_adress(dest_mac);
+        printf(" som nenasiel, posielam paket na rozhrania:\n");
+        #endif
+
+        pcap_t *handler;
+        int i;
+        for(i = 0; i < HASH_LENGTH; i++){
+
+            //ak neobsahuje ziadny zaznam
+            if(stat_table_t[i] == NULL) continue;
+
+            //port na ktory sa posiela je zhodny s odosialajucim portom
+            if(stat_table_t[i]->port == (char *)args) continue;
+
+            #ifdef DEBUG
+            printf("%s",stat_table_t[i]->port);
+            #endif
+
+            send_unicast(packet,header,stat_table_t[i]->port);
+        }
+        printf("\n");
+
+
+    }
+
 }
 
-struct stat_table *find_stat_value(char *port){
+struct stat_table *find_stat_value(u_char *port){
 
     struct stat_table *founded;
 
-    founded = stat_table_t[make_hash(port)];
+    founded = stat_table_t[make_stat_hash(port)];
 
     if(founded == NULL) return NULL;
 
     return founded;
 }
 
-struct stat_table *add_stat_value(char *port){
+struct stat_table *add_stat_value(u_char *port){
 
     struct stat_table *add;
 
-    unsigned hash_value = make_hash(port);
+    unsigned hash_value = make_stat_hash(port);
     add = (struct stat_table *) malloc(sizeof(*add));
     add->port = port;
     add->recv_bytes = 0;
@@ -211,3 +265,49 @@ struct stat_table *add_stat_value(char *port){
 
     return add;
 };
+
+unsigned make_stat_hash(u_char *value){
+
+    unsigned hash_value = 0;
+
+    int i;
+
+    for(i = 0; i < strlen(value); i++){
+        hash_value = *(value + i) + 11 * hash_value;
+    }
+    return (hash_value % HASH_LENGTH);
+
+}
+
+void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *port){
+
+    struct stat_table *founded;
+    pcap_t *handler;
+
+    //otvori rozhranie
+    if((handler = pcap_open_live(port,MAXBYTES2CAPTURE,PROMISCUOUS_MODE,512,errbuf)) == NULL){
+        fprintf(stderr, "ERROR: %s\n", errbuf);
+        exit(-1);
+    }
+    //posle na otvorene rozhranie paket
+    int sent_bytes = pcap_inject(handler,packet,header->len);
+
+    //ak prijalo zapis statistiky
+    if(sent_bytes == -1){
+        fprintf(stderr,"ERROR: Packet not send");
+    }else{
+        //zapise statistiky
+        founded = find_stat_value(port);
+
+        if(founded == NULL){
+            fprintf(stderr,"ERROR: Interface %s not found in stats table",port);
+            exit(-1);
+        }
+
+        founded->sent_bytes = founded->sent_bytes + sent_bytes;
+        founded->sent_frames = founded->sent_frames + 1;
+
+    }
+}
+
+

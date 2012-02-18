@@ -7,10 +7,12 @@
 #include "switch.h"
 
 /** Jenoducha hashovacia funkcia :D */
-unsigned make_hash(char *value){
+unsigned make_ether_hash(u_char *value){
 
     unsigned hash_value = 0;
+
     int i;
+
     for(i = 0; i < ETHER_ADDR_LEN; i++){
         hash_value = *(value + i) + 11 * hash_value;
     }
@@ -19,15 +21,15 @@ unsigned make_hash(char *value){
 }
 
 /** Vyhlada zaznam v tabulke a vrati ho, inak NULL*/
-struct cam_table *find_value(u_char *value){
+struct cam_table *find_packet_value(u_char *value){
 
     struct cam_table *founded;
 
     #ifdef DEBUG
-    printf("\nSearching hash value %d in cam_table...",make_hash(value));
+    printf("\nSearching hash value %d in cam_table...",make_ether_hash(value));
     #endif
 
-    founded = cam_table_t[make_hash(value)];
+    founded = cam_table_t[make_ether_hash(value)];
 
     if(founded != NULL) {
        #ifdef DEBUG
@@ -40,7 +42,7 @@ struct cam_table *find_value(u_char *value){
     }
 
     /*
-    for(founded = cam_table_t[make_hash(value)]; founded != NULL; founded = founded->next){
+    for(founded = cam_table_t[make_ether_hash(value)]; founded != NULL; founded = founded->next){
         printf("cylus: %d\n",i++);
         printf("%d\n",founded->source_mac);
         //if(comapre_u_char(value,founded->source_mac,ETHER_ADDR_LEN)){
@@ -56,12 +58,12 @@ struct cam_table *find_value(u_char *value){
     return NULL;
 };
 
-struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], char *port){
+struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
     struct cam_table *founded;
     unsigned hash_value;
 
     //mac adresa sa este v zozname nenachadza
-    if((founded = find_value(port)) == NULL){
+    if((founded = find_packet_value(source_mac)) == NULL){
         #ifdef DEBUG
         printf("Adding to cam_table...");
         #endif
@@ -71,7 +73,7 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], char *port){
         if((founded->port = copy_dupl(port)) == NULL || founded == NULL) return NULL;
         founded->source_mac = source_mac;
         //vytovri hash a vlozi do cam_tabulky
-        hash_value = make_hash(port);
+        hash_value = make_ether_hash(source_mac);
         founded->next = cam_table_t[hash_value];
         founded->age = (unsigned long)time(NULL);
         cam_table_t[hash_value] = founded;
@@ -98,7 +100,7 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], char *port){
         free((void *) founded->port);
 
         #ifdef DEBUG
-        printf("Row with hash %d replaced in cam_table\n",make_hash(founded->source_mac));
+        printf("Row with hash %d replaced in cam_table\n",make_ether_hash(founded->source_mac));
         #endif
     }
     */
@@ -123,7 +125,7 @@ int comapre_u_char(u_char *a,u_char *b, int char_size){
     return 1;
 }
 
-char *copy_dupl(char *value){
+char *copy_dupl(u_char *value){
 
     char *returned;
 
@@ -153,9 +155,8 @@ void print_cam_table(){
     int i = 0;
     time_t cur_time = time(NULL);
 
-    printf("---------------------------------------\n");
-    printf("---------------CAM TABLE---------------\n");
-    printf("---------------------------------------\n");
+
+    printf("\n---------------CAM TABLE---------------\n");
     printf("MAC address\tPort\tAge\t\n");
     for(i = 0; i < HASH_LENGTH;i++){
         if(cam_table_t[i] == NULL) continue;
@@ -201,9 +202,8 @@ void print_cam_table_stats(){
     int i = 0;
 
 
-    printf("---------------------------------------\n");
-    printf("------------------STAT-----------------\n");
-    printf("---------------------------------------\n");
+
+    printf("\n------------------STAT-----------------\n");
     printf("Iface\tSent-B\tSent-frm\tRecv-B\tRecv-frm\n");
     for(i = 0; i < HASH_LENGTH;i++){
         if(stat_table_t[i] == NULL) continue;
@@ -212,7 +212,6 @@ void print_cam_table_stats(){
         printf("%i\t",stat_table_t[i]->sent_bytes);
         printf("%i\t",stat_table_t[i]->sent_frames);
         printf("%i\t",stat_table_t[i]->recv_bytes);
-        printf("%i\t\n",stat_table_t[i]->recv_frames);
-    }
+        printf("%i\t\n",stat_table_t[i]->recv_frames);    }
     printf("---------------------------------------\n");
 }
