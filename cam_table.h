@@ -4,6 +4,7 @@
 #define AGE_CHECK_TIME 20
 #define DELETE_WAIT_TIME 20
 #define HASH_LENGTH 101
+#define BROADCAST 5
 
 #include <stdint.h>
 

@@ -189,6 +189,12 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
     pthread_mutex_unlock(&mutex);
 
 
+    //ak je broadcast, tak posli broadcast
+    if (make_ether_hash(dest_mac) == BROADCAST){
+        send_broadcast(packet,header,args);
+        return;
+    }
+
     //ak je cielovym portom port na switch, tak neposielaj dalej
     if(comapre_u_char(get_mac_adress(args),dest_mac,ETHER_ADDR_LEN)){
         #ifdef DEBUG
@@ -235,33 +241,10 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
         #ifdef DEBUG
         printf("Rozhranie som pre adresu ");
         print_mac_adress(dest_mac);
-        printf("nenasiel, posielam paket na rozhrania:\n");
+        printf("nenasiel\n");
         #endif
 
-        pcap_t *handler;
-        int i;
-        for(i = 0; i < HASH_LENGTH; i++){
-
-            //ak neobsahuje ziadny zaznam
-            if(stat_table_t[i] == NULL) continue;
-
-            //port na ktory sa posiela je zhodny s odosialajucim portom, netreba posielat
-            if(stat_table_t[i]->port == args) {
-                #ifdef DEBUG
-                printf("Port %s sa zhoduje s portom %s, neposielam unicast\n",stat_table_t[i]->port,args);
-                #endif
-                continue;
-            }
-
-            #ifdef DEBUG
-            printf("%s",stat_table_t[i]->port);
-            #endif
-
-            send_unicast(packet,header,stat_table_t[i]->port);
-        }
-        printf("\n");
-
-
+        send_broadcast(packet,header,args);
     }
 
 }
@@ -337,6 +320,39 @@ void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *
         pthread_mutex_unlock(&mutex);
 
     }
+}
+
+void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,u_char *source_port){
+
+    #ifdef DEBUG
+    printf("Posielam broadcast...\n");
+    #endif
+
+    pcap_t *handler;
+    int i;
+    for(i = 0; i < HASH_LENGTH; i++){
+
+        //ak neobsahuje ziadny zaznam
+        if(stat_table_t[i] == NULL) continue;
+
+        //port na ktory sa posiela je zhodny s odosialajucim portom, netreba posielat
+        if(stat_table_t[i]->port == source_port) {
+            #ifdef DEBUG
+            printf("Port %s sa zhoduje s portom %s, neposielam unicast\n",stat_table_t[i]->port,source_port);
+            #endif
+            continue;
+        }
+
+        #ifdef DEBUG
+        printf("Posielam cez port: %s\t",stat_table_t[i]->port);
+        #endif
+
+        send_unicast(packet,header,stat_table_t[i]->port);
+    }
+
+    #ifdef DEBUG
+    printf("\n");
+    #endif
 }
 
 /** Zisti mac adresu daneho rozhrania */

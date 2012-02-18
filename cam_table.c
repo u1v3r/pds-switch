@@ -71,24 +71,25 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
 
         //vytvor novy zaznam
         founded = (struct cam_table *) malloc(sizeof(*founded));
-        if((founded->port = copy_dupl(port)) == NULL || founded == NULL) return NULL;
+        if(founded == NULL) return NULL;
+        //if((founded->port = copy_dupl(port)) == NULL || founded == NULL) return NULL;
+        founded->port = port;
         founded->source_mac = source_mac;
         //vytovri hash a vlozi do cam_tabulky
         hash_value = make_ether_hash(source_mac);
-        founded->next = cam_table_t[hash_value];
+        //founded->next = cam_table_t[hash_value];
         founded->age = (unsigned long)time(NULL);
         cam_table_t[hash_value] = founded;
 
         #ifdef DEBUG
+        printf("\nport: %s\n",founded->port);
+        printf("mac:");print_mac_adress(founded->source_mac);
+        printf("\nage: %li\n",founded->age);
         printf("Hash %d added to cam_table\n",hash_value);
         #endif
     } else {
         //zaznam existuje, je treba upravit jeho platnost
         founded->age = (unsigned long)time(NULL);
-
-        //ked uz sme u teho, tak v ramci uspory casu odstranime neplatne zaznamy
-
-
     }
 
 
@@ -162,7 +163,7 @@ void print_cam_table(){
 
         print_mac_adress(cam_table_t[i]->source_mac);
         printf("%s\t",cam_table_t[i]->port);
-        printf("%i s\n",(cur_time - cam_table_t[i]->age));
+        printf("%li s\n",(cur_time - cam_table_t[i]->age));
     }
     printf("---------------------------------------\n");
 

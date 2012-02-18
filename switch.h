@@ -30,5 +30,6 @@ struct stat_table *find_stat_value(u_char *);
 struct stat_table *add_stat_value(u_char *);
 void send_unicast(const u_char *,const struct pcap_pkthdr *,u_char *);
 u_char *get_mac_adress(char*);
+void send_broadcast(const u_char *,const struct pcap_pkthdr *,u_char *);
 
 #endif // SWITCH_H_INCLUDED
