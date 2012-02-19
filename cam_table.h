@@ -16,10 +16,10 @@ struct cam_table{
 };
 static struct cam_table *cam_table_t[HASH_LENGTH];
 unsigned make_ether_hash(u_char *);
-struct cam_table *find_value(u_char *);
+struct cam_table *find_packet_value(u_char *);
 struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *);
 int comapre_u_char(u_char *,u_char *, int);
-char *copy_dupl(u_char *);
+u_char *copy_dupl_mac(u_char *);
 void print_mac_adress(u_char mac[ETHER_ADDR_LEN]);
 void print_cam_table();
 void cam_table_age_checker();

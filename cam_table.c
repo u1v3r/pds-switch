@@ -75,7 +75,7 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
         if(founded == NULL) return NULL;
         //if((founded->port = copy_dupl(port)) == NULL || founded == NULL) return NULL;
         founded->port = port;
-        founded->source_mac = source_mac;
+        founded->source_mac = copy_dupl_mac(source_mac);
         //vytovri hash a vlozi do cam_tabulky
         hash_value = make_ether_hash(source_mac);
         //founded->next = cam_table_t[hash_value];
@@ -123,14 +123,30 @@ int comapre_u_char(u_char *a,u_char *b, int char_size){
     return 1;
 }
 
-char *copy_dupl(u_char *value){
+/** Vytvori kopiu mac adresy */
+u_char *copy_dupl_mac(u_char *mac){
 
-    char *returned;
+    #ifdef DEBUG
+    printf("Kopirujem mac:");
+    print_mac_adress(mac);
+    printf("\n");
+    #endif
+    u_char *returned;
+    int i;
 
-    if((returned = (char *) malloc(strlen(value) + 1)) != NULL){
-        strcpy(returned,value);
+    if((returned = (u_char *) malloc(sizeof(u_char) * ETHER_ADDR_LEN)) != NULL){
+        for(i = 0; i < ETHER_ADDR_LEN; i++){
+            *(returned + i) = *(mac + i);
+        }
     }
 
+
+
+    /*
+    if((returned = (char *) malloc(strlen(mac) + 1)) != NULL){
+        strcpy(returned,mac);
+    }
+    */
     return returned;
 
 }
@@ -159,7 +175,6 @@ void print_cam_table(){
     printf("MAC address\tPort\tAge\t\n");
     for(i = 0; i < HASH_LENGTH;i++){
         if(cam_table_t[i] == NULL) continue;
-
         print_mac_adress(cam_table_t[i]->source_mac);
         printf("%s\t",cam_table_t[i]->port);
         printf("%li s\n",(cur_time - cam_table_t[i]->age));
