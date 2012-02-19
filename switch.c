@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <libnet.h>
+#include <stdio.h>
 
 #include "switch.h"
 #include "cam_table.c"
@@ -14,20 +15,16 @@
 #define NORMAL_MODE 0
 #define DEFAULT_PORTS_COUNT 10
 
-
 /**
  * Inicializuje switch
  */
 void init_switch(){
 
-    pthread_t *threads;
-    pthread_t thread_checker;
     pcap_if_t *devices;
 
     int threads_count = DEFAULT_PORTS_COUNT;
     pcap_if_t *d;
-    int i = 0;
-    int j,counter = 0;
+    int j,i = 0;
 
     //najdi vsetky rozhrania
     if( (pcap_findalldevs(&devices,errbuf)) == -1){
@@ -84,7 +81,12 @@ void init_switch(){
 
     //vlakno prechadza tabulku a ak obsahuje stary zaznam tak ho odstrani
     pthread_create(&thread_checker,NULL,cam_table_age_checker,NULL);
+
+    //zachytava prikazy uzivatela
+    pthread_create(&thread_user_input,NULL,user_input,NULL);
+
     pthread_join(thread_checker,NULL);
+    pthread_join(thread_user_input,NULL);
 
     for(j = 0; j < counter;j++){
         pthread_join(threads[j],NULL);
@@ -372,6 +374,65 @@ u_char *get_mac_adress(char* port){
     libnet_destroy(l);
 
     return mac_addr->ether_addr_octet;
+}
+
+void user_input(){
+
+    char user_choice[4];
+
+    for(;;){
+        printf("switch> ");
+        if(scanf("%s",&user_choice) > 4) continue;
+
+        if(strcmp(user_choice,"cam") == 0){
+            print_cam_table();
+            printf("\n");
+        }else if(strcmp(user_choice,"stat") == 0){
+            print_cam_table_stats();
+            printf("\n");
+        }else if(strcmp(user_choice,"igmp") == 0){
+            printf("igmp\n");
+        }else if(strcmp(user_choice,"quit") == 0){
+            quit_switch();
+        }else{
+            printf("switch: %s: comand not found\n",user_choice);
+        }
+    }
+}
+
+/** Zatvori vsetky ether rohrania a ukonci switch */
+void quit_switch(){
+
+    int i,j;
+
+    //ukonci thready
+    for(j = 0; j < counter; j++){
+        if(pthread_cancel(threads[j]) != 0){
+            fprintf(stderr,"Chyba pri ukoncovani\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    if(pthread_cancel(thread_checker) != 0 ){
+        fprintf(stderr,"Chyba pri ukoncovani\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(pthread_cancel(thread_user_input) != 0){
+        fprintf(stderr,"Chyba pri ukoncovani\n");
+        exit(EXIT_FAILURE);
+    }
+
+    //uzatvori rozhrania
+    for(i = 0; i < HASH_LENGTH; i++){
+
+        //ak neobsahuje ziadny zaznam
+        if(stat_table_t[i] == NULL) continue;
+
+        pcap_close(stat_table_t[i]->handler);
+
+    }
+
+    exit(EXIT_SUCCESS);
 }
 
 

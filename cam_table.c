@@ -107,9 +107,7 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
     }
     */
 
-    print_cam_table();
-    print_cam_table_stats();
-
+    //print_cam_table();
     return founded;
 };
 
