@@ -24,11 +24,11 @@ void init_switch(){
     pthread_t thread_checker;
 
     int threads_count = DEFAULT_PORTS_COUNT;
-    pcap_if_t *d,*devices;
+    pcap_if_t *d;
     int i = 0;
     int j,counter = 0;
 
-
+    //najdi vsetky rozhrania
     if( (pcap_findalldevs(&devices,errbuf)) == -1){
         fprintf(stderr,"ERROR: Can't find ethernet devices");
         exit(-1);
@@ -55,7 +55,7 @@ void init_switch(){
             threads_count = threads_count + DEFAULT_PORTS_COUNT;
             threads = (pthread_t *) realloc(threads,threads_count * sizeof(pthread_t));
             #ifdef DEBUG
-            printf("Memory re-allocation: %d\n",threads_count * sizeof(pthread_t));
+            printf("Memory re-allocation: %li\n",threads_count * sizeof(pthread_t));
             #endif
         }
 
@@ -91,12 +91,10 @@ void init_switch(){
 
 }
 
+/** Otvori zadane rozhrania a zacne na nom odchytavat pakety*/
 void *open_device(void *name){
 
-    pcap_t *handler;
-    const char *device_name = (char *) name;
-
-
+    struct stat_table *found;               //treba do struktury ulozit deskriptor rozhrania
 
     /*
     struct bpf_program fp;
@@ -104,16 +102,17 @@ void *open_device(void *name){
     bpf_u_int32 mask;
     char filer_exp[] = "";
     */
-
-    #ifdef DEBUG
-    printf("Handler adress for device %s: %d\n",device_name,&handler);
-    printf("Openning device %s\n",device_name);
-    #endif
-
-    if((handler = pcap_open_live(device_name,MAXBYTES2CAPTURE,PROMISCUOUS_MODE,512,errbuf)) == NULL){
+    //vyber z tabulky rozhranie
+    found = find_stat_value((u_char *)name);
+    if((found->handler = pcap_open_live((const char *)name,MAXBYTES2CAPTURE,PROMISCUOUS_MODE,512,errbuf)) == NULL){
         fprintf(stderr, "ERROR: %s\n", errbuf);
         exit(-1);
     }
+
+    #ifdef DEBUG
+    printf("Handler adress for device %s: %d\n",name,found->handler);
+    printf("Openning device %s\n",name);
+    #endif
 
 /*
     if( pcap_lookupnet(device_name,&net,&mask,errbuf) == -1){
@@ -133,18 +132,21 @@ void *open_device(void *name){
         return 2;
     }
 */
-    if(pcap_setdirection(handler,PCAP_D_IN) == -1){
+
+    //odchytavaj len prichadzajuce pakety
+    if(pcap_setdirection(found->handler,PCAP_D_IN) == -1){
         fprintf(stderr,"ERROR: Can't set packet capture direction");
-        exit(-1);
+        exit(EXIT_FAILURE);
     };
 
-    pcap_loop(handler,-1,process_packet,(u_char *) name);
+    //spracuj prichodzie pakety pomocou process_packet
+    pcap_loop(found->handler,-1,process_packet,(u_char *) name);
 }
 
 /**
  * Vlozi udaj do CAM tabulky a posle ho na eth rozhrania
  */
-void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char *packet){
+void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, const u_char *packet){
 
     struct stat_table *founded;
     struct ether_header *ether;
@@ -159,7 +161,7 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
     int j = 0;
 
     printf("-------------------------------------\n");
-    printf("Source port: %s\n",args);
+    printf("Source port: %s\n",incoming_port);
     printf("Source address:  ");
     do{
         printf("%s%x",(i == ETHER_ADDR_LEN) ? " " : ":",source_mac[j++]);
@@ -180,9 +182,9 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
     pthread_mutex_lock(&mutex);
 
     //vlozi mac adresu rozhrania do cam tabulky
-    add_value(source_mac,args);
+    add_value(source_mac,incoming_port);
     //zapise statistiky
-    founded = find_stat_value(args);
+    founded = find_stat_value(incoming_port);
     founded->recv_frames = founded->recv_frames + 1;
     founded->recv_bytes = founded->recv_bytes + header->len;
 
@@ -191,15 +193,18 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
 
     //ak je broadcast, tak posli broadcast
     if (make_ether_hash(dest_mac) == BROADCAST){
-        send_broadcast(packet,header,args);
+        #ifdef DEBUG
+        printf("\n\n BROADCAST \n\n");
+        #endif
+        send_broadcast(packet,header,incoming_port);
         return;
     }
 
     //ak je cielovym portom port na switch, tak neposielaj dalej
-    if(comapre_u_char(get_mac_adress(args),dest_mac,ETHER_ADDR_LEN)){
+    if(comapre_u_char(get_mac_adress(incoming_port),dest_mac,ETHER_ADDR_LEN)){
         #ifdef DEBUG
-        printf("Cielova mac adresa paketu sa zhoduje s adresou portu %s, neposielam paket dalej:\n ",args);
-        print_mac_adress(get_mac_adress(args));
+        printf("Cielova mac adresa paketu sa zhoduje s adresou portu %s, neposielam paket dalej:\n ",incoming_port);
+        print_mac_adress(get_mac_adress(incoming_port));
         printf("==");
         print_mac_adress(dest_mac);
         printf("\n");
@@ -225,14 +230,18 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
         }
 
         #ifdef DEBUG
-        printf("Posielam packet z rozhrania %s cez rozhranie %s z adresy ",args,cam_table_found->port);
+        printf("Posielam packet z rozhrania %s cez rozhranie %s z adresy ",incoming_port,cam_table_found->port);
         print_mac_adress(source_mac);
         printf("na adresu ");
         print_mac_adress(dest_mac);
         printf("\n");
         #endif
 
-        send_unicast(packet,header,cam_table_found->port);
+
+        /* treba najst spravny deskriptor a
+         * poslat unicast na dane rozhranie
+         */
+        send_unicast(packet,header,cam_table_found->port,find_stat_value(incoming_port)->handler);
 
 
     }
@@ -244,7 +253,7 @@ void process_packet(u_char *args,const struct pcap_pkthdr *header, const u_char 
         printf("nenasiel\n");
         #endif
 
-        send_broadcast(packet,header,args);
+        send_broadcast(packet,header,incoming_port);
     }
 
 }
@@ -289,16 +298,10 @@ unsigned make_stat_hash(u_char *value){
 
 }
 
-void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *port){
+void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *port,pcap_t *handler){
 
     struct stat_table *founded;
-    pcap_t *handler;
 
-    //otvori rozhranie
-    if((handler = pcap_open_live(port,MAXBYTES2CAPTURE,PROMISCUOUS_MODE,512,errbuf)) == NULL){
-        fprintf(stderr, "ERROR: %s\n", errbuf);
-        exit(-1);
-    }
     //posle na otvorene rozhranie paket
     int sent_bytes = pcap_inject(handler,packet,header->len);
 
@@ -322,32 +325,32 @@ void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *
     }
 }
 
-void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,u_char *source_port){
+void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,u_char *incoming_port){
+
+    int i;
 
     #ifdef DEBUG
-    printf("Posielam broadcast...\n");
+    printf("Posielam broadcast, ktory prisiel z rozhrania %s...\n",incoming_port);
     #endif
 
-    pcap_t *handler;
-    int i;
     for(i = 0; i < HASH_LENGTH; i++){
 
         //ak neobsahuje ziadny zaznam
         if(stat_table_t[i] == NULL) continue;
 
         //port na ktory sa posiela je zhodny s odosialajucim portom, netreba posielat
-        if(stat_table_t[i]->port == source_port) {
+        if(stat_table_t[i]->port == incoming_port) {
             #ifdef DEBUG
-            printf("Port %s sa zhoduje s portom %s, neposielam unicast\n",stat_table_t[i]->port,source_port);
+            printf("Port %s sa zhoduje s portom %s, neposielam unicast\n",stat_table_t[i]->port,incoming_port);
             #endif
             continue;
         }
 
         #ifdef DEBUG
-        printf("Posielam cez port: %s\t",stat_table_t[i]->port);
+        printf("Posielam cez port: %s\n",stat_table_t[i]->port);
         #endif
 
-        send_unicast(packet,header,stat_table_t[i]->port);
+        send_unicast(packet,header,stat_table_t[i]->port,stat_table_t[i]->handler);
     }
 
     #ifdef DEBUG
@@ -369,4 +372,5 @@ u_char *get_mac_adress(char* port){
 
     return mac_addr->ether_addr_octet;
 }
+
 

@@ -18,6 +18,7 @@
 				<Linker>
 					<Add library="libpcap" />
 					<Add library="pthread" />
+					<Add library="libnet" />
 				</Linker>
 			</Target>
 			<Target title="Release">

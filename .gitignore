@@ -1,2 +1,4 @@
 bin/
 obj/
+pds-switch
+pds-switch.o
