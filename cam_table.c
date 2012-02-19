@@ -59,6 +59,7 @@ struct cam_table *find_packet_value(u_char *value){
     return NULL;
 };
 
+/** Prida mac adresu do cam tabulku */
 struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
     struct cam_table *founded;
     unsigned hash_value;
@@ -194,6 +195,7 @@ void cam_table_age_checker(){
     }
 }
 
+/** Zobrazi stat tabulku */
 void print_cam_table_stats(){
 
     int i = 0;

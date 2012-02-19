@@ -147,7 +147,8 @@ void *open_device(void *name){
 }
 
 /**
- * Vlozi udaj do CAM tabulky a posle ho na eth rozhrania
+ * Spracuje prichadzajuci paket, vlozi do CAM tabulky mac adresu
+ * a posle ho na eth rozhrania
  */
 void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, const u_char *packet){
 
@@ -261,6 +262,7 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
 
 }
 
+/** Podla nazvu rozhrania vyhlada zaznam v stat tabulke */
 struct stat_table *find_stat_value(u_char *port){
 
     struct stat_table *founded;
@@ -272,6 +274,7 @@ struct stat_table *find_stat_value(u_char *port){
     return founded;
 }
 
+/** Prida zaznam do stat tabulky */
 struct stat_table *add_stat_value(u_char *port){
 
     struct stat_table *add;
@@ -288,6 +291,7 @@ struct stat_table *add_stat_value(u_char *port){
     return add;
 };
 
+/** Vytvori hash pre stat tabulku */
 unsigned make_stat_hash(u_char *value){
 
     unsigned hash_value = 0;
@@ -301,6 +305,7 @@ unsigned make_stat_hash(u_char *value){
 
 }
 
+/** Posle unicast */
 void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *port,pcap_t *handler){
 
     struct stat_table *founded;
@@ -328,6 +333,7 @@ void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *
     }
 }
 
+/** Posle boradcast */
 void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,u_char *incoming_port){
 
     int i;
@@ -376,13 +382,15 @@ u_char *get_mac_adress(char* port){
     return mac_addr->ether_addr_octet;
 }
 
+/** Zachytava prikazy zadane uzivatelom */
 void user_input(){
 
-    char user_choice[4];
+    char user_choice[10];
 
     for(;;){
         printf("switch> ");
-        if(scanf("%s",&user_choice) > 4) continue;
+        scanf("%s",&user_choice);
+        if(strlen(user_choice) > 10) continue;
 
         if(strcmp(user_choice,"cam") == 0){
             print_cam_table();
@@ -395,7 +403,7 @@ void user_input(){
         }else if(strcmp(user_choice,"quit") == 0){
             quit_switch();
         }else{
-            printf("switch: %s: comand not found\n",user_choice);
+            printf("switch: %s: command not found\n",user_choice);
         }
     }
 }
@@ -405,18 +413,21 @@ void quit_switch(){
 
     int i,j;
 
-    //ukonci thready
+    //ukonci thready pre jednotlive rozhrania
     for(j = 0; j < counter; j++){
         if(pthread_cancel(threads[j]) != 0){
             fprintf(stderr,"Chyba pri ukoncovani\n");
             exit(EXIT_FAILURE);
         }
     }
+
+    //ukonci thread pre kontrolu mac tabulky
     if(pthread_cancel(thread_checker) != 0 ){
         fprintf(stderr,"Chyba pri ukoncovani\n");
         exit(EXIT_FAILURE);
     }
 
+    //ukonci thread pre zadavanie vstupu
     if(pthread_cancel(thread_user_input) != 0){
         fprintf(stderr,"Chyba pri ukoncovani\n");
         exit(EXIT_FAILURE);
@@ -425,7 +436,7 @@ void quit_switch(){
     //uzatvori rozhrania
     for(i = 0; i < HASH_LENGTH; i++){
 
-        //ak neobsahuje ziadny zaznam
+        //ak neobsahuje ziadny zaznam, tak preskoc index
         if(stat_table_t[i] == NULL) continue;
 
         pcap_close(stat_table_t[i]->handler);
@@ -434,5 +445,3 @@ void quit_switch(){
 
     exit(EXIT_SUCCESS);
 }
-
-
