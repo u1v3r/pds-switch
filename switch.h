@@ -7,7 +7,7 @@
 
 #define MAXBYTES2CAPTURE 2048
 #define SIZE_ETHERNET 14
-#define DEBUG 1
+//#define DEBUG 1
 
 //struktura obsahuje statistiky pre rozhrania
 struct stat_table{
