@@ -22,6 +22,7 @@ void init_switch(){
 
     pthread_t *threads;
     pthread_t thread_checker;
+    pcap_if_t *devices;
 
     int threads_count = DEFAULT_PORTS_COUNT;
     pcap_if_t *d;

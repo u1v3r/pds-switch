@@ -18,12 +18,6 @@ struct stat_table{
     unsigned recv_frames;
     pcap_t *handler;        //taky mensi hack, uchavava deskriptor pre rozhranie
 };
-//sluzi pri predavani hodnot pri pcap_loop
-struct send_values{
-    u_char *port;
-    pcap_t *handler;
-};
-pcap_if_t *devices;
 struct stat_table *stat_table_t[HASH_LENGTH];
 static char errbuf[PCAP_ERRBUF_SIZE];       //error buffer
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
