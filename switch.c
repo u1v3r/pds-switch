@@ -217,7 +217,9 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
     }
 
     //ak sa cielova mac nachadza v cam table, tak posli na dany port
+    pthread_mutex_lock(&mutex);
     struct cam_table *cam_table_found = find_packet_value(dest_mac);
+    pthread_mutex_unlock(&mutex);
 
     //mac adresa sa nachadza v cam tabulke
     if(cam_table_found != NULL){
