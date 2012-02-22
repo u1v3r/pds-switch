@@ -164,6 +164,7 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
     int i = ETHER_ADDR_LEN;
     int j = 0;
 
+
     printf("-------------------------------------\n");
     printf("Source port: %s\n",incoming_port);
     printf("Source address:  ");
@@ -243,11 +244,11 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
         printf("\n");
         #endif
 
-
         /* treba najst spravny deskriptor a
          * poslat unicast na dane rozhranie
          */
-        send_unicast(packet,header,cam_table_found->port,find_stat_value(incoming_port)->handler);
+        send_unicast(packet,header,cam_table_found->port,
+                     find_stat_value(cam_table_found->port)->handler);
 
 
     }
@@ -317,13 +318,14 @@ void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *
 
     //ak prijalo zapis statistiky
     if(sent_bytes == -1){
-        fprintf(stderr,"ERROR: Packet not send");
+        fprintf(stderr,"Note: Packet not send  - %s\n",pcap_geterr(handler));
+
     }else{
         //zapise statistiky
         founded = find_stat_value(port);
 
         if(founded == NULL){
-            fprintf(stderr,"ERROR: Interface %s not found in stats table",port);
+            fprintf(stderr,"ERROR: Interface %s not found in stats table\n",port);
             exit(-1);
         }
 

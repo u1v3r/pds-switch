@@ -7,7 +7,7 @@
 
 #define MAXBYTES2CAPTURE 2048
 #define SIZE_ETHERNET 14
-//#define DEBUG 1
+#define DEBUG 1
 
 //struktura obsahuje statistiky pre rozhrania
 struct stat_table{
@@ -21,7 +21,7 @@ struct stat_table{
 struct stat_table *stat_table_t[HASH_LENGTH];
 static char errbuf[PCAP_ERRBUF_SIZE];       //error buffer
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_t *threads;
+pthread_t *threads;//hready pre rozhrania
 pthread_t thread_checker,thread_user_input;
 int counter = 0;
 

@@ -1,8 +1,8 @@
 #ifndef CAM_TABLE_H_INCLUDED
 #define CAM_TABLE_H_INCLUDED
 
-#define AGE_CHECK_TIME 20
-#define DELETE_WAIT_TIME 20
+#define AGE_CHECK_TIME 180   //udava dobu platnosti zaznamu v tabulke
+#define DELETE_WAIT_TIME 30 //doba po ktorej sa vzdy skontroluje cam tabulka
 #define HASH_LENGTH 101
 #define BROADCAST 5
 

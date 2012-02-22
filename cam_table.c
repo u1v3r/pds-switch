@@ -117,7 +117,7 @@ int comapre_u_char(u_char *a,u_char *b, int char_size){
 
     int i;
     for(i = 0; i < char_size ; i++){
-        if(*(a + 1) != *(b + 1)) return 0;
+        if(*(a + i) != *(b + i)) return 0;
     }
 
     return 1;
@@ -157,7 +157,7 @@ void print_mac_adress(u_char mac[ETHER_ADDR_LEN]){
     int i = ETHER_ADDR_LEN;
     int j = 0;
     do{
-        printf("%s%x",(i == ETHER_ADDR_LEN) ? " " : ":",mac[j++]);
+        printf("%s%x",(i == ETHER_ADDR_LEN) ? "" : ":",mac[j++]);
     }while(--i > 0);
 
     printf("\t");
