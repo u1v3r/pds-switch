@@ -200,7 +200,7 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
         print_mac_adress(dest_mac);
         printf("\n");
         #endif
-        //return;
+        return;
     }
 
     //ak sa cielova mac nachadza v cam table, tak posli na dany port
