@@ -100,8 +100,8 @@ void *open_device(void *name){
     }
 
     #ifdef DEBUG
-    printf("Handler adress for device %s: %d\n",name,found->handler);
-    printf("Openning device %s\n",name);
+    printf("Handler adress for device %s: %d\n",(char *)name,&found->handler);
+    printf("Openning device %s\n",(char *)name);
     #endif
 
 /*
@@ -137,7 +137,7 @@ void *open_device(void *name){
  * Spracuje prichadzajuci paket, vlozi do CAM tabulky mac adresu
  * a posle ho na eth rozhrania
  */
-void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, const u_char *packet){
+void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const u_char *packet){
 
     struct stat_table *founded;
     struct ether_header *ether;

@@ -13,7 +13,6 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
-					<Add option="-lpcap" />
 				</Compiler>
 				<Linker>
 					<Add library="libpcap" />

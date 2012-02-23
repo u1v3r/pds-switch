@@ -42,7 +42,7 @@ int counter = 0;
 
 unsigned make_stat_hash(char *);
 void init_switch();
-void process_packet(u_char *, const struct pcap_pkthdr *,
+void process_packet(char *, const struct pcap_pkthdr *,
 	    const u_char *);
 void *open_device(void *);
 struct stat_table *find_stat_value(char *);

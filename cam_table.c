@@ -81,8 +81,8 @@ struct cam_table *add_value(u_int8_t source_mac[ETHER_ADDR_LEN], char *port){
     return founded;
 };
 
-/** Porovnava dva u_char retazce a vrati 1 ak sa rovnaju, inak 0 */
-int comapre_mac(u_char *a,u_char *b){
+/** Porovnava dve mac adresy a vrati 1 ak sa rovnaju, inak 0 */
+int comapre_mac(u_int8_t *a,u_int8_t *b){
 
     int i;
     for(i = 0; i < ETHER_ADDR_LEN ; i++){
