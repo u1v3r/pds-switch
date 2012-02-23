@@ -1,8 +1,3 @@
-#include <string.h>
-#include <stdlib.h>
-#include <net/ethernet.h>
-#include <time.h>
-
 #include "cam_table.h"
 #include "switch.h"
 
@@ -41,16 +36,6 @@ struct cam_table *find_packet_value(u_char *value){
        #endif
        return founded;
     }
-
-    /*
-    for(founded = cam_table_t[make_ether_hash(value)]; founded != NULL; founded = founded->next){
-        printf("cylus: %d\n",i++);
-        printf("%d\n",founded->source_mac);
-        //if(comapre_u_char(value,founded->source_mac,ETHER_ADDR_LEN)){
-          //  return founded;
-        //}
-    }
-    */
 
     #ifdef DEBUG
     printf("Not found\n");
@@ -93,22 +78,6 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
         founded->age = (unsigned long)time(NULL);
     }
 
-
-    /*else {//odstran stary a vloz nove hodnoty
-        #ifdef DEBUG
-        printf("Replacing row in cam_table\n");
-        #endif
-
-        printf("port %s\n",founded->port);
-        free((void *) founded->port);
-
-        #ifdef DEBUG
-        printf("Row with hash %d replaced in cam_table\n",make_ether_hash(founded->source_mac));
-        #endif
-    }
-    */
-
-    //print_cam_table();
     return founded;
 };
 
@@ -140,15 +109,7 @@ u_char *copy_dupl_mac(u_char *mac){
         }
     }
 
-
-
-    /*
-    if((returned = (char *) malloc(strlen(mac) + 1)) != NULL){
-        strcpy(returned,mac);
-    }
-    */
     return returned;
-
 }
 
 /** Na vystup vypise mac adresu */
@@ -205,7 +166,6 @@ void cam_table_age_checker(){
                 cam_table_t[i] = NULL;//odstran zaznam
                 pthread_mutex_unlock(&mutex);
             }
-
         }
     }
 }

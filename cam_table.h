@@ -6,6 +6,9 @@
 #define HASH_LENGTH 101
 #define BROADCAST 5
 
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include <stdint.h>
 
 struct cam_table{
