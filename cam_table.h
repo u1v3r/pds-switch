@@ -1,10 +1,10 @@
 #ifndef CAM_TABLE_H_INCLUDED
 #define CAM_TABLE_H_INCLUDED
 
-#define AGE_CHECK_TIME 180   //udava dobu platnosti zaznamu v tabulke
+#define AGE_CHECK_TIME 180  //udava dobu platnosti zaznamu v tabulke v sekundach
 #define DELETE_WAIT_TIME 30 //doba po ktorej sa vzdy skontroluje cam tabulka
-#define HASH_LENGTH 101
-#define BROADCAST 5
+#define HASH_LENGTH 101     //velkost cam tabulky
+#define BROADCAST 5         //hash pre broadcast adresu
 
 #include <string.h>
 #include <stdlib.h>
@@ -13,17 +13,17 @@
 
 struct cam_table{
     struct cam_table *next;
-    u_char *port;             //meno rozhranie
-    u_char *source_mac;     //adresa prichadzajuceho paketu
+    char *port;             //meno rozhrania
+    u_int8_t *source_mac;   //adresa prichadzajuceho paketu
     unsigned long age;      //urcuje platnost zaznamu
 };
 static struct cam_table *cam_table_t[HASH_LENGTH];
-unsigned make_ether_hash(u_char *);
-struct cam_table *find_packet_value(u_char *);
-struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *);
-int comapre_u_char(u_char *,u_char *, int);
-u_char *copy_dupl_mac(u_char *);
-void print_mac_adress(u_char mac[ETHER_ADDR_LEN]);
+unsigned make_ether_hash(u_int8_t *);
+struct cam_table *find_packet_value(u_int8_t *);
+struct cam_table *add_value(u_int8_t source_mac[ETHER_ADDR_LEN], char *);
+int comapre_mac(u_int8_t *,u_int8_t *);
+u_int8_t *copy_dupl_mac(u_int8_t *);
+void print_mac_adress(u_int8_t mac[ETHER_ADDR_LEN]);
 void print_cam_table();
 void cam_table_age_checker();
 void print_cam_table_stats();

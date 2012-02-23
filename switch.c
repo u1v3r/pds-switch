@@ -55,7 +55,7 @@ void init_switch(){
         pthread_create(&threads[i++],NULL,open_device,(void *) d->name);
 
         //vlozenie rozhrani do stat tabulky
-        add_stat_value((u_char *)d->name);
+        add_stat_value(d->name);
 
         //pocet vytvorenych vlakien
         counter++;
@@ -92,7 +92,7 @@ void *open_device(void *name){
     char filer_exp[] = "";
     */
     //vyber z tabulky rozhranie
-    found = find_stat_value((u_char *)name);
+    found = find_stat_value((char *)name);
     if((found->handler = pcap_open_live((const char *)name,MAXBYTES2CAPTURE,
                                         PROMISCUOUS_MODE,512,errbuf)) == NULL){
         fprintf(stderr, "ERROR: %s\n", errbuf);
@@ -143,7 +143,7 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
     struct ether_header *ether;
     ether = (struct ether_header*)(packet);
 
-    u_char source_mac[ETHER_ADDR_LEN],dest_mac[ETHER_ADDR_LEN];
+    u_int8_t source_mac[ETHER_ADDR_LEN],dest_mac[ETHER_ADDR_LEN];
     memcpy(source_mac,ether->ether_shost,ETHER_ADDR_LEN);
     memcpy(dest_mac,ether->ether_dhost,ETHER_ADDR_LEN);
 
@@ -173,9 +173,9 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
     pthread_mutex_lock(&mutex);
 
     //vlozi mac adresu rozhrania do cam tabulky
-    add_value(source_mac,incoming_port);
+    add_value(source_mac,(char *)incoming_port);
     //zapise statistiky
-    founded = find_stat_value(incoming_port);
+    founded = find_stat_value((char *)incoming_port);
     founded->recv_frames = founded->recv_frames + 1;
     founded->recv_bytes = founded->recv_bytes + header->len;
 
@@ -187,15 +187,15 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
         #ifdef DEBUG
         printf("\n\n BROADCAST \n\n");
         #endif
-        send_broadcast(packet,header,incoming_port);
+        send_broadcast(packet,header,(char *)incoming_port);
         return;
     }
 
     //ak je cielovym portom port na switch, tak neposielaj dalej
-    if(comapre_u_char(get_mac_adress(incoming_port),dest_mac,ETHER_ADDR_LEN)){
+    if(comapre_mac(get_mac_adress((char *)incoming_port),dest_mac)){
         #ifdef DEBUG
         printf("Cielova mac adresa paketu sa zhoduje s adresou portu %s, neposielam paket dalej:\n ",incoming_port);
-        print_mac_adress(get_mac_adress(incoming_port));
+        print_mac_adress(get_mac_adress((char *)incoming_port));
         printf("==");
         print_mac_adress(dest_mac);
         printf("\n");
@@ -212,7 +212,7 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
     if(cam_table_found != NULL){
 
         //treba posielat len pakety, ktore danej adrese patria
-        if( comapre_u_char(cam_table_found->source_mac,dest_mac,ETHER_ADDR_LEN) == 0) {
+        if( comapre_mac(cam_table_found->source_mac,dest_mac) == 0) {
             #ifdef DEBUG
             print_mac_adress(cam_table_found->source_mac);
             printf(" != ");
@@ -247,13 +247,13 @@ void process_packet(u_char *incoming_port,const struct pcap_pkthdr *header, cons
         printf("nenasiel\n");
         #endif
 
-        send_broadcast(packet,header,incoming_port);
+        send_broadcast(packet,header,(char *)incoming_port);
     }
 
 }
 
 /** Podla nazvu rozhrania vyhlada zaznam v stat tabulke */
-struct stat_table *find_stat_value(u_char *port){
+struct stat_table *find_stat_value(char *port){
 
     struct stat_table *founded;
 
@@ -265,7 +265,7 @@ struct stat_table *find_stat_value(u_char *port){
 }
 
 /** Prida zaznam do stat tabulky */
-struct stat_table *add_stat_value(u_char *port){
+struct stat_table *add_stat_value(char *port){
 
     struct stat_table *add;
 
@@ -282,7 +282,7 @@ struct stat_table *add_stat_value(u_char *port){
 };
 
 /** Vytvori hash pre stat tabulku */
-unsigned make_stat_hash(u_char *value){
+unsigned make_stat_hash(char *value){
 
     unsigned hash_value = 0;
 
@@ -296,7 +296,7 @@ unsigned make_stat_hash(u_char *value){
 }
 
 /** Posle unicast */
-void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *port,pcap_t *handler){
+void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,char *port,pcap_t *handler){
 
     struct stat_table *founded;
 
@@ -325,7 +325,7 @@ void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,u_char *
 }
 
 /** Posle boradcast */
-void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,u_char *incoming_port){
+void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,char *incoming_port){
 
     int i;
 
@@ -360,7 +360,7 @@ void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,u_char
 }
 
 /** Zisti mac adresu daneho rozhrania */
-u_char *get_mac_adress(char* port){
+u_int8_t *get_mac_adress(char* port){
 
     libnet_t *l = libnet_init(LIBNET_LINK, port, errbuf);
     if ( l == NULL ) {

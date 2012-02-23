@@ -2,7 +2,7 @@
 #include "switch.h"
 
 /** Jenoducha hashovacia funkcia :D */
-unsigned make_ether_hash(u_char *value){
+unsigned make_ether_hash(u_int8_t *value){
 
     unsigned hash_value = 0;
 
@@ -17,7 +17,7 @@ unsigned make_ether_hash(u_char *value){
 }
 
 /** Vyhlada zaznam v tabulke a vrati ho, inak NULL*/
-struct cam_table *find_packet_value(u_char *value){
+struct cam_table *find_packet_value(u_int8_t *value){
 
     struct cam_table *founded;
 
@@ -45,7 +45,7 @@ struct cam_table *find_packet_value(u_char *value){
 };
 
 /** Prida mac adresu do cam tabulku */
-struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
+struct cam_table *add_value(u_int8_t source_mac[ETHER_ADDR_LEN], char *port){
     struct cam_table *founded;
     unsigned hash_value;
 
@@ -82,10 +82,10 @@ struct cam_table *add_value(u_char source_mac[ETHER_ADDR_LEN], u_char *port){
 };
 
 /** Porovnava dva u_char retazce a vrati 1 ak sa rovnaju, inak 0 */
-int comapre_u_char(u_char *a,u_char *b, int char_size){
+int comapre_mac(u_char *a,u_char *b){
 
     int i;
-    for(i = 0; i < char_size ; i++){
+    for(i = 0; i < ETHER_ADDR_LEN ; i++){
         if(*(a + i) != *(b + i)) return 0;
     }
 
@@ -93,17 +93,17 @@ int comapre_u_char(u_char *a,u_char *b, int char_size){
 }
 
 /** Vytvori kopiu mac adresy */
-u_char *copy_dupl_mac(u_char *mac){
+u_int8_t *copy_dupl_mac(u_int8_t *mac){
 
     #ifdef DEBUG
     printf("Kopirujem mac:");
     print_mac_adress(mac);
     printf("\n");
     #endif
-    u_char *returned;
+    u_int8_t *returned;
     int i;
 
-    if((returned = (u_char *) malloc(sizeof(u_char) * ETHER_ADDR_LEN)) != NULL){
+    if((returned = (u_int8_t *) malloc(sizeof(u_int8_t) * ETHER_ADDR_LEN)) != NULL){
         for(i = 0; i < ETHER_ADDR_LEN; i++){
             *(returned + i) = *(mac + i);
         }
@@ -113,7 +113,7 @@ u_char *copy_dupl_mac(u_char *mac){
 }
 
 /** Na vystup vypise mac adresu */
-void print_mac_adress(u_char mac[ETHER_ADDR_LEN]){
+void print_mac_adress(u_int8_t mac[ETHER_ADDR_LEN]){
 
     int i = ETHER_ADDR_LEN;
     int j = 0;
