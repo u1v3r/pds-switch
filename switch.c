@@ -1,5 +1,6 @@
 #include "switch.h"
 #include "cam_table.c"
+#include "igmp_snp.c"
 
 /**
  * Inicializuje switch
@@ -140,8 +141,8 @@ void *open_device(void *name){
 void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const u_char *packet){
 
     struct stat_table *founded;
-    struct ether_header *ether;
-    ether = (struct ether_header*)(packet);
+    struct ether_header *ether = (struct ether_header*)(packet);
+    struct ip_header *ip = (struct ip_header*)(packet + ETHERNET_SIZE);
 
     u_int8_t source_mac[ETHER_ADDR_LEN],dest_mac[ETHER_ADDR_LEN];
     memcpy(source_mac,ether->ether_shost,ETHER_ADDR_LEN);
@@ -180,6 +181,14 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
     founded->recv_bytes = founded->recv_bytes + header->len;
 
     pthread_mutex_unlock(&mutex);
+
+    //ak je prijaty igmp packet
+    if(ip->ip_proto == IGMP_PROTO){
+        #ifdef DEBUG
+        printf("\n\n IGMP packet \n\n");
+        #endif
+        process_igmp_packet(ether,ip);
+    }
 
 
     //ak je broadcast, tak posli broadcast

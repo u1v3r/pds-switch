@@ -2,12 +2,7 @@
 #define SWITCH_H_INCLUDED
 
 #include <pcap.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <libnet.h>
 #include <stdio.h>
 
 #include "cam_table.h"
@@ -16,13 +11,6 @@
 #define DEFAULT_PORTS_COUNT 10  //pouziva sa pri dynamickom alokovani pamati pre thready
 #define MAXBYTES2CAPTURE 2048
 #define DEBUG 1
-
-struct ether_header
-{
-  u_int8_t  ether_dhost[ETHER_ADDR_LEN];//dst adresa
-  u_int8_t  ether_shost[ETHER_ADDR_LEN];//src adresa
-  u_int16_t ether_type;
-};
 
 //struktura obsahuje statistiky pre rozhrania
 struct stat_table{
