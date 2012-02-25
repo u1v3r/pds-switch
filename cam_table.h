@@ -1,15 +1,12 @@
 #ifndef CAM_TABLE_H_INCLUDED
 #define CAM_TABLE_H_INCLUDED
 
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-
 #include "igmp_snp.h"
 
-#define AGE_CHECK_TIME 180  //udava dobu platnosti zaznamu v tabulke v sekundach
-#define DELETE_WAIT_TIME 30 //doba po ktorej sa vzdy skontroluje cam tabulka
-#define BROADCAST 5         //hash pre broadcast adresu
+#define AGE_CHECK_TIME 20  //udava dobu platnosti zaznamu v tabulke v sekundach
+#define DELETE_WAIT_TIME 10 //doba po ktorej sa vzdy skontroluje cam tabulka
+#define BROADCAST 205         //hash pre broadcast adresu
+
 
 struct cam_table{
     struct cam_table *next;

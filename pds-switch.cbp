@@ -43,9 +43,14 @@
 		<Unit filename="cam_table.h">
 			<Option target="&lt;{~None~}&gt;" />
 		</Unit>
+		<Unit filename="igmp_snp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="igmp_snp.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="packet_headers.h" />
 		<Unit filename="switch.c">
 			<Option compilerVar="CC" />
 			<Option target="&lt;{~None~}&gt;" />

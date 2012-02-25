@@ -1,6 +1,5 @@
 #include "switch.h"
 #include "cam_table.c"
-#include "igmp_snp.c"
 
 /**
  * Inicializuje switch
@@ -187,7 +186,8 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
         #ifdef DEBUG
         printf("\n\n IGMP packet \n\n");
         #endif
-        process_igmp_packet(ether,ip);
+        process_igmp_packet(packet,ether,ip,incoming_port,header);
+        return;
     }
 
 
@@ -446,3 +446,51 @@ void quit_switch(){
 
     exit(EXIT_SUCCESS);
 }
+
+void process_igmp_packet(const u_char *packet,struct ether_header *ether,
+                         struct ip_header *ip, char *incoming_port,
+                         const struct pcap_pkthdr *header){
+
+    u_int ip_len = (ip->ip_ver_ihl & 0x0F) * 4;//velost ip paketu
+    struct igmp_header *igmp_t = (struct igmp_header *)(packet + ETHERNET_SIZE + ip_len);
+
+    //paket posiela querier zisti port na ktorom sa nachadza
+    if(igmp_t->igmp_type == IGMP_MEMBERSHIP_QUERY){
+        #ifdef DEBUG
+        printf("IGMP querier port: %s\n", incoming_port);
+        printf("IGMP group address: ");
+        print_ip_address(igmp_t->igmp_gaddr);
+        printf("\n");
+        printf("Hash: %d\n",make_address_hash(igmp_t->igmp_gaddr));
+        #endif
+
+        //ulozi do global premmenej port na ktorom je querier
+        igmp_querier_port = incoming_port;
+
+        //GENERAL QUERY = posli na vsetky rozhrania
+        if(igmp_t->igmp_gaddr == IGMP_GENERAL_QUERY){
+            #ifdef DEBUG
+            printf("IGMP general query\n");
+            #endif
+
+            //posli broadcast na vsetky rozhrania a cakaj na odpoved
+            send_broadcast(packet,header,incoming_port);
+            return;
+        }else {//group specific query
+
+
+        }
+    }
+
+    //if(igmp_t->igmp_type == IGMP_ME)
+
+}
+
+/* Na vystup vypise ip adresu */
+void print_ip_address(uint32_t ip_address){
+
+    unsigned char *octet = convert_ip(ip_address);
+
+    printf("%d.%d.%d.%d",octet[0],octet[1],octet[2],octet[3]);
+}
+

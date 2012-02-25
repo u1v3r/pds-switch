@@ -10,7 +10,7 @@
 #define PROMISCUOUS_MODE 1
 #define DEFAULT_PORTS_COUNT 10  //pouziva sa pri dynamickom alokovani pamati pre thready
 #define MAXBYTES2CAPTURE 2048
-#define DEBUG 1
+
 
 //struktura obsahuje statistiky pre rozhrania
 struct stat_table{
@@ -27,6 +27,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_t *threads;//hready pre rozhrania
 pthread_t thread_checker,thread_user_input;
 int counter = 0;
+char *igmp_querier_port = NULL;    //port na ktorom sa nachadza igmp querier
 
 unsigned make_stat_hash(char *);
 void init_switch();
@@ -41,5 +42,9 @@ void send_broadcast(const u_char *,const struct pcap_pkthdr *,char *);
 void get_all_devices(pcap_if_t *);
 void user_input();
 void quit_switch();
+void process_igmp_packet(const u_char *,struct ether_header *,
+                         struct ip_header *, char *,
+                         const struct pcap_pkthdr *);
+void print_ip_address(uint32_t);
 
 #endif // SWITCH_H_INCLUDED

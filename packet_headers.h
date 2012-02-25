@@ -6,6 +6,7 @@
 #include <libnet.h>
 
 #define ETHERNET_SIZE 14
+#define DEBUG 1
 
 struct ether_header
 {
@@ -23,8 +24,8 @@ struct ip_header {
     u_char  ip_ttl;            /* Time to live */
     u_char  ip_proto;          /* Protocol */
     u_short ip_sum;            /* Header checksum */
-    u_long  ip_saddr;          /* Source address */
-    u_long  ip_daddr;          /* Destination address */
+    uint32_t  ip_saddr;          /* Source address */
+    uint32_t  ip_daddr;          /* Destination address */
     u_int   ip_op_pad;         /* Option + Padding */
 };
 
@@ -32,7 +33,7 @@ struct igmp_header {
     u_char  igmp_type;           /* Type */
     u_char  igmp_mrt;            /* Max response time */
     u_short igmp_sum;            /* Checksum */
-    u_long  igmp_gaddr;          /* Group address */
+    uint32_t igmp_gaddr;          /* Group address */
 };
 
 #endif // PACKET_HEADERS_H_INCLUDED
