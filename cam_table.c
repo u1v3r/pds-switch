@@ -206,30 +206,46 @@ void cam_table_age_checker(){
             //ak existuje viac zaznomov v skupine
             if(cam_table_t[i]->next != NULL){
 
+                struct cam_table *node, *prev_node = NULL;
+                node = cam_table_t[i];
+
+                while(node) {
+                    //vymaz vsetky zaznamy starsie ako AGE_CHECK_TIME
+                    if((time(NULL) - node->age) >= AGE_CHECK_TIME){
+                        if(prev_node) prev_node->next = node->next;
+                        else cam_table_t[i] = node->next;
+                        #ifdef DEBUG
+                        printf("Index - %i\n",i);
+                        print_mac_adress(node->source_mac);
+                        printf("\n");
+                        printf("cas: %i",(time(NULL) - node->age));
+                        #endif
+                        free(node);
+                        #ifdef DEBUG
+                        printf("SMAZANE\n");
+                        #endif
+                        break;
+                    }
+                    prev_node = node;
+                    node = node->next;
+                }
+/*
                 struct cam_table *founded;
 
                 //zoznam je usporiadany od najmensieho
                 for(founded = cam_table_t[i]; founded != NULL; founded = founded->next){
                     //dalsi zaznam v poradi
                     if((time(NULL) - founded->age) >= AGE_CHECK_TIME){
-                        if(founded->next == NULL){//posledny v rade
-                            printf("MAZEM posledny zaznam - %i\n",i);
-                            free((void *) founded);
-                            break;
-                        } else{//este tam je nejaky
-                            struct cam_table *next = founded->next;
-
-                            printf("\n\n\nMAZEM pre index %i\n\n\n",i);
-                            print_mac_adress(founded->source_mac);
-
-                            free((void *)founded);//odstran zaznam
-                            //founded = next;
-
-                            printf("\nsmazal som\n");
-                        }
-
+                        printf("Index - %i\n",i);
+                        print_mac_adress(founded->source_mac);
+                        printf("\n");
+                        founded->next = NULL;
+                        founded = NULL;
+                        printf("SMAZANE\n");
+                        break;
                     }
                 }
+*/
 
             } else {
                 if((time(NULL) - cam_table_t[i]->age) >= AGE_CHECK_TIME){
