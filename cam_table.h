@@ -1,18 +1,19 @@
 #ifndef CAM_TABLE_H_INCLUDED
 #define CAM_TABLE_H_INCLUDED
 
+#include "switch.h"
 #include "igmp_snp.h"
 
-#define AGE_CHECK_TIME 20  //udava dobu platnosti zaznamu v tabulke v sekundach
-#define DELETE_WAIT_TIME 10 //doba po ktorej sa vzdy skontroluje cam tabulka
-#define BROADCAST 205         //hash pre broadcast adresu
+#define AGE_CHECK_TIME 180  /* udava dobu platnosti zaznamu v tabulke v sekundach */
+#define DELETE_WAIT_TIME 50 /* doba po ktorej sa vzdy skontroluje cam tabulka */
+#define BROADCAST 205       /* hash pre broadcast adresu */
 
 
 struct cam_table{
     struct cam_table *next;
-    char *port;             //meno rozhrania
-    u_int8_t *source_mac;   //adresa prichadzajuceho paketu
-    unsigned long age;      //urcuje platnost zaznamu
+    char *port;             /* meno rozhrania */
+    u_int8_t *source_mac;   /* adresa prichadzajuceho paketu */
+    unsigned long age;      /* urcuje platnost zaznamu */
 };
 static struct cam_table *cam_table_t[HASH_LENGTH];
 unsigned make_ether_hash(u_int8_t *);

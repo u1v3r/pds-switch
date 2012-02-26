@@ -5,13 +5,16 @@
 #include <stdint.h>
 #include <libnet.h>
 
+#define MULTICAST_ALL_ON_SUBNET 0x10000e0 /* IP 224.0.0.1 */
+#define MULTICAST_START 0xe0
+#define MULTICAST_END 0xffffffef
 #define ETHERNET_SIZE 14
 #define DEBUG 1
 
 struct ether_header
 {
-  u_int8_t  ether_dhost[ETHER_ADDR_LEN];//dst adresa
-  u_int8_t  ether_shost[ETHER_ADDR_LEN];//src adresa
+  u_int8_t  ether_dhost[ETHER_ADDR_LEN]; /* dst adresa */
+  u_int8_t  ether_shost[ETHER_ADDR_LEN]; /* src adresa */
   u_int16_t ether_type;
 };
 
@@ -24,8 +27,8 @@ struct ip_header {
     u_char  ip_ttl;            /* Time to live */
     u_char  ip_proto;          /* Protocol */
     u_short ip_sum;            /* Header checksum */
-    uint32_t  ip_saddr;          /* Source address */
-    uint32_t  ip_daddr;          /* Destination address */
+    uint32_t  ip_saddr;        /* Source address */
+    uint32_t  ip_daddr;        /* Destination address */
     u_int   ip_op_pad;         /* Option + Padding */
 };
 
@@ -33,7 +36,7 @@ struct igmp_header {
     u_char  igmp_type;           /* Type */
     u_char  igmp_mrt;            /* Max response time */
     u_short igmp_sum;            /* Checksum */
-    uint32_t igmp_gaddr;          /* Group address */
+    uint32_t igmp_gaddr;         /* Group address */
 };
 
 #endif // PACKET_HEADERS_H_INCLUDED

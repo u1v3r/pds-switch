@@ -50,6 +50,8 @@ void init_switch(){
         printf("flag: %d\n",d->flags);
         #endif
 
+        pthread_mutex_init(&mutex,NULL);
+        pthread_mutex_init(&mutex_igmp,NULL);
 
         //vytvorenie samostatného vlákna pre každé rozhranie
         pthread_create(&threads[i++],NULL,open_device,(void *) d->name);
@@ -191,8 +193,9 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
     }
 
 
-    //ak je broadcast, tak posli broadcast
-    if (make_ether_hash(dest_mac) == BROADCAST){
+    /* ak je broadcast alebo je nastavena dst ip 224.0.0.1, tak posli broadcast */
+    if (make_ether_hash(dest_mac) == BROADCAST ||
+        ip->ip_daddr == MULTICAST_ALL_ON_SUBNET){
         #ifdef DEBUG
         printf("\n\n BROADCAST \n\n");
         #endif
@@ -243,8 +246,7 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
         /* treba najst spravny deskriptor a
          * poslat unicast na dane rozhranie
          */
-        send_unicast(packet,header,cam_table_found->port,
-                     find_stat_value(cam_table_found->port)->handler);
+        send_unicast(packet,header,cam_table_found->port);
 
 
     }
@@ -305,8 +307,10 @@ unsigned make_stat_hash(char *value){
 }
 
 /** Posle unicast */
-void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,char *port,pcap_t *handler){
+void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,char *port){
 
+    /* zisti handler pre dany port */
+    pcap_t *handler = find_stat_value(port)->handler;
     struct stat_table *founded;
 
     //posle na otvorene rozhranie paket
@@ -360,7 +364,7 @@ void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,char *
         printf("Posielam cez port: %s\n",stat_table_t[i]->port);
         #endif
 
-        send_unicast(packet,header,stat_table_t[i]->port,stat_table_t[i]->handler);
+        send_unicast(packet,header,stat_table_t[i]->port);
     }
 
     #ifdef DEBUG
@@ -400,7 +404,8 @@ void user_input(){
             print_cam_table_stats();
             printf("\n");
         }else if(strcmp(user_choice,"igmp") == 0){
-            printf("igmp\n");
+            print_igmp_table();
+            printf("\n");
         }else if(strcmp(user_choice,"quit") == 0){
             quit_switch();
         }else{
@@ -461,10 +466,13 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
         printf("IGMP group address: ");
         print_ip_address(igmp_t->igmp_gaddr);
         printf("\n");
+        printf("IGMP dest address: %x - ",ip->ip_daddr);
+        print_ip_address(ip->ip_daddr);
+        printf("\n");
         printf("Hash: %d\n",make_address_hash(igmp_t->igmp_gaddr));
         #endif
 
-        //ulozi do global premmenej port na ktorom je querier
+        /* ulozi do global premmenej port na ktorom je querier */
         igmp_querier_port = incoming_port;
 
         //GENERAL QUERY = posli na vsetky rozhrania
@@ -477,12 +485,74 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
             send_broadcast(packet,header,incoming_port);
             return;
         }else {//group specific query
+            /* posle paket vsetkym v danej skupine*/
 
+            /* najdi skupinu v zozname */
+            struct igmp_group_table *founded = find_group(igmp_t->igmp_gaddr);
+
+            /* skupina v zozname neexistuje */
+            if(founded == NULL){
+                #ifdef DEBUG
+                printf("IGMP skupina s adresou ");
+                print_ip_address(igmp_t->igmp_gaddr);
+                printf(" neexistuje\n");
+                #endif
+                return;
+            }
+
+            struct igmp_host *hosts = founded->igmp_hosts;
+
+            while(hosts != NULL){
+                #ifdef DEBUG
+                printf("Posielam IGMP query na port %s\n",hosts->port);
+                #endif
+                /* posle na vsetky porty v skupine */
+                send_unicast(packet,header,hosts->port);
+
+                hosts = hosts->next;
+            }
 
         }
+
+        return;
     }
 
-    //if(igmp_t->igmp_type == IGMP_ME)
+    /* MEMBERSHIP REPORT */
+    if(igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V1 ||
+       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V2 /*||
+       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V3*/){
+
+        if(igmp_querier_port == NULL){
+            #ifdef DEBUG
+            printf("IGMP querier neexistuje, nemozem poslat membership report\n");
+            #endif
+            return;
+        }
+
+        /* Zisti port a group adresu a uloz do group_table */
+        pthread_mutex_lock(&mutex_igmp);
+
+        /* vloz novu alebo uprav skupinu */
+        add_group(igmp_t->igmp_gaddr,incoming_port);
+
+        pthread_mutex_unlock(&mutex_igmp);
+
+        return;
+    }
+
+    if(igmp_t->igmp_type == IGMP_LEAVE_GROUP){
+        pthread_mutex_lock(&mutex_igmp);
+        if(remove_host(igmp_t->igmp_gaddr,incoming_port) == 0){
+            #ifdef DEBUG
+            printf("Clena skupiny ");
+            print_ip_address(igmp_t->igmp_gaddr);
+            printf(" sa nepodarilo odstranit\n");
+            #endif
+
+        }
+        pthread_mutex_unlock(&mutex_igmp);
+        return;
+    }
 
 }
 
@@ -494,3 +564,55 @@ void print_ip_address(uint32_t ip_address){
     printf("%d.%d.%d.%d",octet[0],octet[1],octet[2],octet[3]);
 }
 
+void print_igmp_table(){
+    int i;
+    struct igmp_group_table *founded;
+
+    printf("\n---------------IGMP TABLE---------------\n");
+    printf("GroupAddr\tIfaces\t\n");
+    pthread_mutex_lock(&mutex_igmp);
+    for(i = 0; i < HASH_LENGTH;i++){
+        //prechadzaj len tie kde su nejake hodnoty
+        if(igmp_groups[i] == NULL) continue;
+        if(igmp_groups[i]->deleted == 1) continue;
+
+        //ak sa v jednom indexe nachadza viac hodnot, tak vypis
+        if(igmp_groups[i]->next != NULL){
+            #ifdef DEBUG
+            printf("\nkolizne pre hash %i\n",i);
+            #endif
+            //postupne vypisuj
+            for(founded = igmp_groups[i]; founded != NULL; founded = founded->next){
+                print_ip_address(founded->group_addr);
+                printf("\t");
+                printf("*%s,",igmp_querier_port);
+                print_hosts(igmp_groups[i]);
+
+            }
+            #ifdef DEBUG
+            printf("koniec kolizne\n\n");
+            #endif
+        } else {//inak vypisuj len hodnoty na indexoch
+
+            print_ip_address(igmp_groups[i]->group_addr);
+            printf("\t");
+            printf("*%s,",igmp_querier_port);
+            print_hosts(igmp_groups[i]);
+        }
+    }
+    pthread_mutex_unlock(&mutex_igmp);
+    printf("-----------------------------------------\n");
+}
+
+inline void print_hosts(struct igmp_group_table *group){
+    struct igmp_host *hosts;
+    for(hosts = group->igmp_hosts; hosts != NULL; hosts = hosts->next){
+        /* je to posledny zaznam */
+        if(hosts->next == NULL){
+            printf("%s",hosts->port);
+        }else{
+            printf("%s,",hosts->port);
+        }
+    }
+    printf("\n");
+}

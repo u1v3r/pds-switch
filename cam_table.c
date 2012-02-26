@@ -1,10 +1,7 @@
 #include "cam_table.h"
 
-
-
 /** Jenoducha hashovacia funkcia :D */
 unsigned make_ether_hash(u_int8_t *value){
-
 
     unsigned hash_value = 0;
     int i;
