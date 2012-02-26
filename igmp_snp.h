@@ -26,6 +26,7 @@ struct igmp_host{
     unsigned long age;      /*udava dobu poslednej komunikacie pre zariadenie */
     struct igmp_host *next;/*ukazuje na dalsi prvok zoznamu */
     struct igmp_host *last_element;
+    int deleted;
 };
 
 struct igmp_group_table{

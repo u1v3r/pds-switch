@@ -36,6 +36,7 @@ struct stat_table *add_stat_value(char *);
 void send_unicast(const u_char *,const struct pcap_pkthdr *,char *);
 u_int8_t *get_mac_adress(char *);
 void send_broadcast(const u_char *,const struct pcap_pkthdr *,char *);
+void send_multicast(const u_char *,const struct pcap_pkthdr *,uint32_t, char *);
 void get_all_devices(pcap_if_t *);
 void user_input();
 void quit_switch();
@@ -45,5 +46,5 @@ void process_igmp_packet(const u_char *,struct ether_header *,
 void print_ip_address(uint32_t);
 void print_igmp_table();
 inline void print_hosts(struct igmp_group_table *);
-
+int multicast_type(uint32_t);
 #endif // SWITCH_H_INCLUDED

@@ -6,8 +6,10 @@
 #include <libnet.h>
 
 #define MULTICAST_ALL_ON_SUBNET 0x10000e0 /* IP 224.0.0.1 */
-#define MULTICAST_START 0xe0
-#define MULTICAST_END 0xffffffef
+#define MULTICAST_START 224
+#define MULTICAST_END 239
+#define MULTICAST_TYPE_GROUP 1
+#define MULTICAST_TYPE_ALL 2
 #define ETHERNET_SIZE 14
 #define DEBUG 1
 

@@ -136,8 +136,7 @@ void *open_device(void *name){
 }
 
 /**
- * Spracuje prichadzajuci paket, vlozi do CAM tabulky mac adresu
- * a posle ho na eth rozhrania
+ * Spracuje prichadzajuci paket
  */
 void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const u_char *packet){
 
@@ -203,11 +202,37 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
         return;
     }
 
+    /* zachytava vsetky multicast pakety, ktore nie su IGMP */
+    if(multicast_type(ip->ip_daddr) > 0){
+
+        /*
+        if(multicast_t == MULTICAST_TYPE_ALL){
+
+            #ifdef DEBUG
+            printf("Adresa ");
+            print_ip_address(ip->ip_daddr);
+            printf(" je z rozsahu 224.0.0.0/24 - broadcast");
+            #endif
+            send_broadcast(packet,header,incoming_port);
+
+        }else {
+        */
+            #ifdef DEBUG
+            printf("\n\n\n MULTICAST pre skupinu ");
+            print_ip_address(ip->ip_daddr);
+            printf(" \n\n\n");
+            #endif
+            send_multicast(packet,header,ip->ip_daddr,incoming_port);
+        //}
+
+        return;
+    }
+
     //ak je cielovym portom port na switch, tak neposielaj dalej
-    if(comapre_mac(get_mac_adress((char *)incoming_port),dest_mac)){
+    if(comapre_mac(get_mac_adress(incoming_port),dest_mac)){
         #ifdef DEBUG
         printf("Cielova mac adresa paketu sa zhoduje s adresou portu %s, neposielam paket dalej:\n ",incoming_port);
-        print_mac_adress(get_mac_adress((char *)incoming_port));
+        print_mac_adress(get_mac_adress(incoming_port));
         printf("==");
         print_mac_adress(dest_mac);
         printf("\n");
@@ -243,11 +268,7 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
         printf("\n");
         #endif
 
-        /* treba najst spravny deskriptor a
-         * poslat unicast na dane rozhranie
-         */
         send_unicast(packet,header,cam_table_found->port);
-
 
     }
     else{//rozhranie sa v cam tabulke nenechacza
@@ -258,7 +279,7 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
         printf("nenasiel\n");
         #endif
 
-        send_broadcast(packet,header,(char *)incoming_port);
+        send_broadcast(packet,header,incoming_port);
     }
 
 }
@@ -370,6 +391,61 @@ void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,char *
     #ifdef DEBUG
     printf("\n");
     #endif
+}
+
+/** Posle multicast packet na vsetky rozhrania skupiny */
+void send_multicast(const u_char *packet,const struct pcap_pkthdr *header,uint32_t address, char *incoming_port){
+
+    struct igmp_group_table *group;
+
+    pthread_mutex_lock(&mutex_igmp);
+    /* najdi skupinu */
+    group = find_group(address);
+    pthread_mutex_unlock(&mutex_igmp);
+
+    /* ak skupina neexistuje, tak preposli na port queriera*/
+    if(group == NULL){
+        #ifdef DEBUG
+        printf("Packet pre multicast skupinu ");
+        print_ip_address(address);
+        printf(" nebol odoslany, skupina neexistuje\n");
+        #endif
+
+        if(igmp_querier_port != NULL){
+            #ifdef DEBUG
+            printf("Preposielam na rozhranie queriera %s\n",igmp_querier_port);
+            #endif
+            send_unicast(packet,header,igmp_querier_port);
+        }
+
+        return;
+    }
+
+    /* ak bola skupina vymazana, tak preposli na port queriera*/
+    if(group->deleted == 1){
+        if(igmp_querier_port != NULL){
+            #ifdef DEBUG
+            printf("Preposielam na rozhranie queriera %s\n",igmp_querier_port);
+            #endif
+            send_unicast(packet,header,igmp_querier_port);
+        }
+        return;
+    }
+
+
+    struct igmp_host *hosts;
+
+    for(hosts = group->igmp_hosts; hosts != NULL; hosts = hosts->next){
+        /* neposielaj na rozhranie z ktoreho sprava prisla, alebo ak bol clen zmazany */
+        if(strcmp(hosts->port,incoming_port) || hosts->deleted == 1) continue;
+
+        #ifdef DEBUG
+        printf("Posielam multicast paket na rozhranie %s\n",hosts->port);
+        #endif
+        send_unicast(packet,header,hosts->port);
+    }
+
+    return;
 }
 
 /** Zisti mac adresu daneho rozhrania */
@@ -488,10 +564,12 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
             /* posle paket vsetkym v danej skupine*/
 
             /* najdi skupinu v zozname */
+            pthread_mutex_lock(&mutex_igmp);
             struct igmp_group_table *founded = find_group(igmp_t->igmp_gaddr);
+            pthread_mutex_unlock(&mutex_igmp);
 
             /* skupina v zozname neexistuje */
-            if(founded == NULL){
+            if(founded == NULL || founded->deleted == 1){
                 #ifdef DEBUG
                 printf("IGMP skupina s adresou ");
                 print_ip_address(igmp_t->igmp_gaddr);
@@ -503,15 +581,19 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
             struct igmp_host *hosts = founded->igmp_hosts;
 
             while(hosts != NULL){
-                #ifdef DEBUG
-                printf("Posielam IGMP query na port %s\n",hosts->port);
-                #endif
-                /* posle na vsetky porty v skupine */
-                send_unicast(packet,header,hosts->port);
 
-                hosts = hosts->next;
+                /* clen skupiny nie je "zmazany" */
+                if(hosts->deleted == 0){
+                    #ifdef DEBUG
+                    printf("Posielam IGMP query na port %s\n",hosts->port);
+                    #endif
+
+                    /* posle na vsetky porty v skupine */
+                    send_unicast(packet,header,hosts->port);
+
+                    hosts = hosts->next;
+                }
             }
-
         }
 
         return;
@@ -532,15 +614,39 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
         /* Zisti port a group adresu a uloz do group_table */
         pthread_mutex_lock(&mutex_igmp);
 
-        /* vloz novu alebo uprav skupinu */
+        /* vloz novu alebo uprav skupinu resp. clena skupiny */
         add_group(igmp_t->igmp_gaddr,incoming_port);
 
         pthread_mutex_unlock(&mutex_igmp);
 
+        /* preposli paket na rozhranie querieru */
+        send_unicast(packet,header,igmp_querier_port);
+
+        /* rovnako preposli aj na rozhrania clenov skupiny */
+        /* TREBA ZISTIT CI TREBA PREPOSIELAT AJ OSTATNYM CLENOM SKUPINY
+        struct igmp_host *tmp_hosts;
+        for(tmp_hosts = find_group(igmp_t->igmp_gaddr); tmp_hosts != NULL; tmp_hosts = tmp_hosts->next){
+
+            // neposielaj na port z ktoreho report prisiel a ak je host zmazany
+            if(strcmp(tmp_hosts->port,incoming_port) == 0 || tmp_hosts->deleted == 1){
+                continue;
+            }
+
+            #ifdef DEBUG
+            printf("Preposielam memebership report na rozhranie clena %s\n",tmp_hosts->port);
+            #endif
+
+
+            send_unicast(packet,header,tmp_hosts->port);
+        }
+        */
         return;
     }
 
+    /* IGMP LEAVE */
     if(igmp_t->igmp_type == IGMP_LEAVE_GROUP){
+
+        /* Odstrani clena zo skupiny */
         pthread_mutex_lock(&mutex_igmp);
         if(remove_host(igmp_t->igmp_gaddr,incoming_port) == 0){
             #ifdef DEBUG
@@ -551,6 +657,10 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
 
         }
         pthread_mutex_unlock(&mutex_igmp);
+
+        /* preposli leave paket na rozhranie querieru */
+        send_unicast(packet,header,igmp_querier_port);
+
         return;
     }
 
@@ -607,6 +717,9 @@ void print_igmp_table(){
 inline void print_hosts(struct igmp_group_table *group){
     struct igmp_host *hosts;
     for(hosts = group->igmp_hosts; hosts != NULL; hosts = hosts->next){
+        /* preskoc odstranene zaznamy */
+        if(hosts->deleted == 1) continue;
+
         /* je to posledny zaznam */
         if(hosts->next == NULL){
             printf("%s",hosts->port);
@@ -615,4 +728,24 @@ inline void print_hosts(struct igmp_group_table *group){
         }
     }
     printf("\n");
+}
+
+/** Zisti ci sa jedna o multicast adresu */
+int multicast_type(uint32_t address){
+
+    unsigned char *ip = convert_ip(address);
+
+    /* adresy z rozsahu 224.0.0.0/24 */
+    if(ip[0] == MULTICAST_START && ip[1] == 0 && ip[2] == 0){
+        return MULTICAST_TYPE_ALL;
+    }
+
+    /* vsetky adresy v rozsahu 224 - 239*/
+    if(ip[0] >= MULTICAST_START && ip[0] <= MULTICAST_END){
+        return MULTICAST_TYPE_GROUP;
+    }
+
+
+    /* nie je multicast*/
+    return 0;
 }

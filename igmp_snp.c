@@ -144,7 +144,10 @@ struct igmp_group_table *find_group(uint32_t address){
 };
 
 int remove_host(uint32_t address, char *port){
+
     struct igmp_group_table *group = find_group(address);
+
+
     if(group == NULL){
         #ifdef DEBUG
         printf("IGMP remove host: mazany zanam neexistuje\n");
@@ -167,7 +170,7 @@ int remove_host(uint32_t address, char *port){
             return 1;
         }
     }*/else {
-        //neotestovane a pravdepodobne nefunkcne
+        //neotestovane
         struct igmp_host *prev_host = group->igmp_hosts;
 
         while(prev_host != NULL){
@@ -176,14 +179,8 @@ int remove_host(uint32_t address, char *port){
                 #ifdef DEBUG
                 printf("Odstranujem port %s\n",port);
                 #endif
-
-                free((void *)prev_host);
-                if(prev_host->next == NULL) {
-                    group->length = group->length -1;
-                    return 1;
-                }
-
-                prev_host = prev_host->next;
+                prev_host->deleted = 1;
+                group->length = group->length -1;
 
                 return 1;
             }
@@ -222,7 +219,7 @@ struct igmp_host *find_host(struct igmp_group_table *group, char *port){
 
     struct igmp_host *hosts;
     for(hosts = group->igmp_hosts; hosts != NULL; hosts = hosts->next){
-        if(strcmp(hosts->port,port) == 0){
+        if(strcmp(hosts->port,port) == 0 && hosts->deleted == 0){
             return hosts;
         }
     }
