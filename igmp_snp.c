@@ -57,21 +57,20 @@ struct igmp_group_table *add_group(uint32_t address, char *port){
             printf("\n");
         #endif
 
-        /*
+
         #ifdef DEBUG
-            printf("Posledny port v zozname je port: %s\n",founded->igmp_hosts->last_element->port);
+            printf("Stara velkost je: %d\n",founded->length);
         #endif
-        */
+
 
         /* vytvorime noveho hosta */
         struct igmp_host *new_host = (struct igmp_host *) malloc(sizeof(*new_host));
         new_host->port = port;
         new_host->age = (unsigned long)time(NULL);
-        new_host->next = NULL;
+        new_host->next = founded->igmp_hosts; /* pridame na zaciatok */
         new_host->deleted = 0;
 
         /* noveho clena prida na zaciatok */
-        founded->igmp_hosts->next = founded->igmp_hosts;/* posunieme dozadu */
         founded->igmp_hosts = new_host; /* novy dopredu */
 
         /* a pridame ho nakoniec
@@ -82,11 +81,11 @@ struct igmp_group_table *add_group(uint32_t address, char *port){
         /* inkrementujeme pocitadlo */
         founded->length = founded->length + 1;
 
-        /*
+
         #ifdef DEBUG
-        printf("Novy posledny port je taraz: %s\n",founded->igmp_hosts->last_element->port);
+        printf("Nova velkost je: %d\n",founded->length);
         #endif
-        */
+
 
     }else {
         /* multicast skupina este nie je v tabulke */
@@ -181,9 +180,13 @@ int remove_host(uint32_t address, char *port){
         return 0;
     }
 
+    #ifdef DEBUG
+        printf("Group length pred odstranenim: %d\n",group->length);
+    #endif
+
     /* skupina ma len jedneho clena, takze ju mozeme v pohode celu odstranit */
     if(group->length == 1){
-        if(strcmp(group->igmp_hosts->port,port) == 0){
+        if(find_host(group,port) != NULL){/* kotrola ci zaznam existuje */
             group->deleted = 1;
             return 1;
         }
