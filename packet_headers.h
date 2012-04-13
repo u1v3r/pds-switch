@@ -1,8 +1,8 @@
 #ifndef PACKET_HEADERS_H_INCLUDED
 #define PACKET_HEADERS_H_INCLUDED
 
-#include <sys/types.h>
-#include <stdint.h>
+/*#include <sys/types.h>*/
+/*#include <stdint.h>*/
 #include <libnet.h>
 
 #define MULTICAST_ALL_ON_SUBNET 0x10000e0 /* IP 224.0.0.1 */

@@ -19,22 +19,21 @@
 #define IGMP_MEMBERSHIP_REPORT_V2 0x16
 #define IGMP_MEMBERSHIP_REPORT_V3 0x22
 #define IGMP_LEAVE_GROUP_V2 0x17
-#define IGMP_GENERAL_QUERY 0/*group adress je nastavena na 0 ak je general query */
+#define IGMP_GENERAL_QUERY 0/* group adress je nastavena na 0 ak je general query */
 
 struct igmp_host{
-    char *port;             /*port na ktorom sa zariadenie nachadza */
-    unsigned long age;      /*udava dobu poslednej komunikacie pre zariadenie */
-    struct igmp_host *next;/*ukazuje na dalsi prvok zoznamu */
-    struct igmp_host *last_element;
+    char *port;             /* port na ktorom sa zariadenie nachadza */
+    unsigned long age;      /* udava dobu poslednej komunikacie pre zariadenie */
+    struct igmp_host *next; /* ukazuje na dalsi prvok zoznamu */
+    //struct igmp_host *last_element;
     int deleted;
 };
 
 struct igmp_group_table{
     struct igmp_host *igmp_hosts;
-    uint32_t group_addr;    /*ip adresa skupiny */
-    /*char *querier_port;*/
+    uint32_t group_addr;            /*ip adresa skupiny */
     struct igmp_group_table *next;
-    int length;
+    int length;                     /* udava pocet clenov multicast skupiny */
     int deleted;
 };
 

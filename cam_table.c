@@ -215,9 +215,11 @@ void cam_table_age_checker(){
                         printf("Index - %i\n",i);
                         print_mac_adress(node->source_mac);
                         printf("\n");
-                        printf("cas: %i",(time(NULL) - node->age));
+                        printf("cas: %lu",(time(NULL) - node->age));
                         #endif
+
                         free(node);
+
                         #ifdef DEBUG
                         printf("SMAZANE\n");
                         #endif

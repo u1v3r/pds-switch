@@ -39,7 +39,7 @@ void init_switch(){
             threads_count = threads_count + DEFAULT_PORTS_COUNT;
             threads = (pthread_t *) realloc(threads,threads_count * sizeof(pthread_t));
             #ifdef DEBUG
-            printf("Memory re-allocation: %li\n",threads_count * sizeof(pthread_t));
+            printf("Memory re-allocation: %u\n",threads_count * sizeof(pthread_t));
             #endif
         }
 
@@ -53,13 +53,13 @@ void init_switch(){
         pthread_mutex_init(&mutex,NULL);
         pthread_mutex_init(&mutex_igmp,NULL);
 
-        //vytvorenie samostatného vlákna pre každé rozhranie
+        /* vytvorenie samostatného vlákna pre každé rozhranie */
         pthread_create(&threads[i++],NULL,open_device,(void *) d->name);
 
-        //vlozenie rozhrani do stat tabulky
+        /* vlozenie rozhrani do stat tabulky */
         add_stat_value(d->name);
 
-        //pocet vytvorenych vlakien
+        /* pocet vytvorenych vlakien */
         counter++;
     }
 
@@ -67,11 +67,11 @@ void init_switch(){
     printf("Threads count: %d\n", counter);
     #endif
 
-    //vlakno prechadza tabulku a ak obsahuje stary zaznam tak ho odstrani
-    pthread_create(&thread_checker,NULL,cam_table_age_checker,NULL);
+    /* vlakno prechadza tabulku a ak obsahuje stary zaznam tak ho odstrani */
+    pthread_create(&thread_checker,NULL,(void *)cam_table_age_checker,NULL);
 
-    //zachytava prikazy uzivatela
-    pthread_create(&thread_user_input,NULL,user_input,NULL);
+    /* zachytava prikazy uzivatela */
+    pthread_create(&thread_user_input,NULL,(void *)user_input,NULL);
 
     pthread_join(thread_checker,NULL);
     pthread_join(thread_user_input,NULL);
@@ -82,7 +82,7 @@ void init_switch(){
 
 }
 
-/** Otvori zadane rozhrania a zacne na nom odchytavat pakety*/
+/** Otvori zadane rozhrania a zacne na nom odchytavat pakety */
 void *open_device(void *name){
 
     struct stat_table *found;  //treba do struktury ulozit deskriptor rozhrania
@@ -93,7 +93,8 @@ void *open_device(void *name){
     bpf_u_int32 mask;
     char filer_exp[] = "";
     */
-    //vyber z tabulky rozhranie
+
+    /* vyber z tabulky rozhranie */
     found = find_stat_value((char *)name);
     if((found->handler = pcap_open_live((const char *)name,MAXBYTES2CAPTURE,
                                         PROMISCUOUS_MODE,512,errbuf)) == NULL){
@@ -102,7 +103,7 @@ void *open_device(void *name){
     }
 
     #ifdef DEBUG
-    printf("Handler adress for device %s: %d\n",(char *)name,&found->handler);
+    printf("Handler adress for device %s: %li\n",(char *)name,(long)&found->handler);
     printf("Openning device %s\n",(char *)name);
     #endif
 
@@ -125,14 +126,14 @@ void *open_device(void *name){
     }
 */
 
-    //odchytavaj len prichadzajuce pakety
+    /* odchytavaj len prichadzajuce pakety */
     if(pcap_setdirection(found->handler,PCAP_D_IN) == -1){
         fprintf(stderr,"ERROR: Can't set packet capture direction");
         exit(EXIT_FAILURE);
     };
 
     //spracuj prichodzie pakety pomocou process_packet
-    pcap_loop(found->handler,-1,process_packet,(u_char *) name);
+    pcap_loop(found->handler,-1,(void *)process_packet,(u_char *) name);
 }
 
 /**
@@ -149,43 +150,44 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
     memcpy(dest_mac,ether->ether_dhost,ETHER_ADDR_LEN);
 
     #ifdef DEBUG
-    int i = ETHER_ADDR_LEN;
-    int j = 0;
+        int i = ETHER_ADDR_LEN;
+        int j = 0;
 
-    printf("-------------------------------------\n");
-    printf("Source port: %s\n",incoming_port);
-    printf("Source address:  ");
-    do{
-        printf("%s%x",(i == ETHER_ADDR_LEN) ? " " : ":",source_mac[j++]);
-    }while(--i > 0);
-    printf("\n");
+        printf("-------------------------------------\n");
+        printf("Source port: %s\n",incoming_port);
+        printf("Source address:  ");
+        do{
+            printf("%s%x",(i == ETHER_ADDR_LEN) ? " " : ":",source_mac[j++]);
+        }while(--i > 0);
+        printf("\n");
 
-    i = ETHER_ADDR_LEN;
-    j = 0;
-    printf("Dest Address:  ");
-    do{
-        printf("%s%x",(i == ETHER_ADDR_LEN) ? " " : ":",dest_mac[j++]);
-    }while(--i > 0);
+        i = ETHER_ADDR_LEN;
+        j = 0;
+        printf("Dest Address:  ");
+        do{
+            printf("%s%x",(i == ETHER_ADDR_LEN) ? " " : ":",dest_mac[j++]);
+        }while(--i > 0);
 
-    printf("\n");
+        printf("\n");
     #endif
 
 
     pthread_mutex_lock(&mutex);
 
-    //vlozi mac adresu rozhrania do cam tabulky
+    /* vlozi mac adresu rozhrania do cam tabulky */
     add_value(source_mac,(char *)incoming_port);
-    //zapise statistiky
+
+    /* zapise statistiky */
     founded = find_stat_value((char *)incoming_port);
     founded->recv_frames = founded->recv_frames + 1;
     founded->recv_bytes = founded->recv_bytes + header->len;
 
     pthread_mutex_unlock(&mutex);
 
-    //ak je prijaty igmp packet
+    /* ak je prijaty igmp packet */
     if(ip->ip_proto == IGMP_PROTO){
         #ifdef DEBUG
-        printf("\n\n IGMP packet \n\n");
+            printf("\n\n IGMP packet \n\n");
         #endif
         process_igmp_packet(packet,ether,ip,incoming_port,header);
         return;
@@ -196,7 +198,7 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
     if (make_ether_hash(dest_mac) == BROADCAST ||
         ip->ip_daddr == MULTICAST_ALL_ON_SUBNET){
         #ifdef DEBUG
-        printf("\n\n BROADCAST \n\n");
+            printf("\n\n BROADCAST \n\n");
         #endif
         send_broadcast(packet,header,(char *)incoming_port);
         return;
@@ -218,9 +220,9 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
         }else {
         */
             #ifdef DEBUG
-            printf("\n\n\n MULTICAST pre skupinu ");
-            print_ip_address(ip->ip_daddr);
-            printf(" \n\n\n");
+                printf("\n\n\n MULTICAST pre skupinu ");
+                print_ip_address(ip->ip_daddr);
+                printf(" \n\n\n");
             #endif
             send_multicast(packet,header,ip->ip_daddr,incoming_port);
         //}
@@ -228,55 +230,56 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
         return;
     }
 
-    //ak je cielovym portom port na switch, tak neposielaj dalej
+    /* ak je cielovym portom port na switch, tak neposielaj dalej */
     if(comapre_mac(get_mac_adress(incoming_port),dest_mac)){
         #ifdef DEBUG
-        printf("Cielova mac adresa paketu sa zhoduje s adresou portu %s, neposielam paket dalej:\n ",incoming_port);
-        print_mac_adress(get_mac_adress(incoming_port));
-        printf("==");
-        print_mac_adress(dest_mac);
-        printf("\n");
+            printf("Cielova mac adresa paketu sa zhoduje s adresou portu %s, neposielam paket dalej:\n ",incoming_port);
+            print_mac_adress(get_mac_adress(incoming_port));
+            printf("==");
+            print_mac_adress(dest_mac);
+            printf("\n");
         #endif
         return;
     }
 
-    //ak sa cielova mac nachadza v cam table, tak posli na dany port
+    /* ak sa cielova mac nachadza v cam table, tak posli na dany port */
     pthread_mutex_lock(&mutex);
     struct cam_table *cam_table_found = find_packet_value(dest_mac);
     pthread_mutex_unlock(&mutex);
 
-    //mac adresa sa nachadza v cam tabulke
+    /* mac adresa sa nachadza v cam tabulke */
     if(cam_table_found != NULL){
 
-        //treba posielat len pakety, ktore danej adrese patria
+        /* treba posielat len pakety, ktore danej adrese patria */
         if( comapre_mac(cam_table_found->source_mac,dest_mac) == 0) {
             #ifdef DEBUG
-            print_mac_adress(cam_table_found->source_mac);
-            printf(" != ");
-            print_mac_adress(dest_mac);
-            printf("\n");
+                print_mac_adress(cam_table_found->source_mac);
+                printf(" != ");
+                print_mac_adress(dest_mac);
+                printf("\n");
             #endif
             return;
         }
 
         #ifdef DEBUG
-        printf("Posielam packet z rozhrania %s cez rozhranie %s z adresy ",
-               incoming_port,cam_table_found->port);
-        print_mac_adress(source_mac);
-        printf("na adresu ");
-        print_mac_adress(dest_mac);
-        printf("\n");
+            printf("Posielam packet z rozhrania %s cez rozhranie %s z adresy ",
+                   incoming_port,cam_table_found->port);
+            print_mac_adress(source_mac);
+            printf("na adresu ");
+            print_mac_adress(dest_mac);
+            printf("\n");
         #endif
 
         send_unicast(packet,header,cam_table_found->port);
 
     }
-    else{//rozhranie sa v cam tabulke nenechacza
+    else{
+        /*rozhranie sa v cam tabulke nenechadza */
 
         #ifdef DEBUG
-        printf("Rozhranie som pre adresu ");
-        print_mac_adress(dest_mac);
-        printf("nenasiel\n");
+            printf("Rozhranie som pre adresu ");
+            print_mac_adress(dest_mac);
+            printf("nenasiel\n");
         #endif
 
         send_broadcast(packet,header,incoming_port);
@@ -334,15 +337,15 @@ void send_unicast(const u_char *packet,const struct pcap_pkthdr *header,char *po
     pcap_t *handler = find_stat_value(port)->handler;
     struct stat_table *founded;
 
-    //posle na otvorene rozhranie paket
+    /* posle na otvorene rozhranie paket */
     int sent_bytes = pcap_inject(handler,packet,header->len);
 
-    //ak prijalo zapis statistiky
+    /* ak prijalo zapis statistiky */
     if(sent_bytes == -1){
         fprintf(stderr,"Note: Packet not send  - %s\n",pcap_geterr(handler));
 
     }else{
-        //zapise statistiky
+        /* zapise statistiky*/
         founded = find_stat_value(port);
 
         if(founded == NULL){
@@ -369,20 +372,20 @@ void send_broadcast(const u_char *packet,const struct pcap_pkthdr *header,char *
 
     for(i = 0; i < HASH_LENGTH; i++){
 
-        //ak neobsahuje ziadny zaznam
+        /* ak neobsahuje ziadny zaznam */
         if(stat_table_t[i] == NULL) continue;
 
-        //port na ktory sa posiela je zhodny s odosialajucim portom, netreba posielat
+        /* port na ktory sa posiela je zhodny s odosialajucim portom, netreba posielat */
         if(stat_table_t[i]->port == incoming_port) {
             #ifdef DEBUG
-            printf("Port %s sa zhoduje s portom %s, neposielam unicast\n",
-                   stat_table_t[i]->port,incoming_port);
+                printf("Port %s sa zhoduje s portom %s, neposielam unicast\n",
+                       stat_table_t[i]->port,incoming_port);
             #endif
             continue;
         }
 
         #ifdef DEBUG
-        printf("Posielam cez port: %s\n",stat_table_t[i]->port);
+            printf("Posielam cez port: %s\n",stat_table_t[i]->port);
         #endif
 
         send_unicast(packet,header,stat_table_t[i]->port);
@@ -403,17 +406,17 @@ void send_multicast(const u_char *packet,const struct pcap_pkthdr *header,uint32
     group = find_group(address);
     pthread_mutex_unlock(&mutex_igmp);
 
-    /* ak skupina neexistuje, tak preposli na port queriera*/
+    /* ak skupina neexistuje, tak preposli na port queriera */
     if(group == NULL){
         #ifdef DEBUG
-        printf("Packet pre multicast skupinu ");
-        print_ip_address(address);
-        printf(" nebol odoslany, skupina neexistuje\n");
+            printf("Packet pre multicast skupinu ");
+            print_ip_address(address);
+            printf(" nebol odoslany, skupina neexistuje\n");
         #endif
 
         if(igmp_querier_port != NULL){
             #ifdef DEBUG
-            printf("Preposielam na rozhranie queriera %s\n",igmp_querier_port);
+                printf("Preposielam na rozhranie queriera %s\n",igmp_querier_port);
             #endif
             send_unicast(packet,header,igmp_querier_port);
         }
@@ -425,7 +428,7 @@ void send_multicast(const u_char *packet,const struct pcap_pkthdr *header,uint32
     if(group->deleted == 1){
         if(igmp_querier_port != NULL){
             #ifdef DEBUG
-            printf("Preposielam na rozhranie queriera %s\n",igmp_querier_port);
+                printf("Preposielam na rozhranie queriera %s\n",igmp_querier_port);
             #endif
             send_unicast(packet,header,igmp_querier_port);
         }
@@ -440,7 +443,7 @@ void send_multicast(const u_char *packet,const struct pcap_pkthdr *header,uint32
         if(strcmp(hosts->port,incoming_port) || hosts->deleted == 1) continue;
 
         #ifdef DEBUG
-        printf("Posielam multicast paket na rozhranie %s\n",hosts->port);
+            printf("Posielam multicast paket na rozhranie %s\n",hosts->port);
         #endif
         send_unicast(packet,header,hosts->port);
     }
@@ -463,14 +466,14 @@ u_int8_t *get_mac_adress(char* port){
     return mac_addr->ether_addr_octet;
 }
 
-/** Zachytava prikazy zadane uzivatelom */
+/** Obsluhuje prikazy zadane uzivatelom */
 void user_input(){
 
     char user_choice[10];
 
     for(;;){
         printf("switch> ");
-        scanf("%s",&user_choice);
+        scanf("%s",user_choice);
         if(strlen(user_choice) > 10) continue;
 
         if(strcmp(user_choice,"cam") == 0){
@@ -528,39 +531,40 @@ void quit_switch(){
     exit(EXIT_SUCCESS);
 }
 
+/** Postara sa o spracovanie igmp packetu */
 void process_igmp_packet(const u_char *packet,struct ether_header *ether,
                          struct ip_header *ip, char *incoming_port,
                          const struct pcap_pkthdr *header){
 
-    u_int ip_len = (ip->ip_ver_ihl & 0x0F) * 4;//velost ip paketu
+    u_int ip_len = (ip->ip_ver_ihl & 0x0F) * 4;/* velost ip paketu */
     struct igmp_header *igmp_t = (struct igmp_header *)(packet + ETHERNET_SIZE + ip_len);
 
-    //paket posiela querier zisti port na ktorom sa nachadza
+    /* paket posiela querier zisti port na ktorom sa nachadza */
     if(igmp_t->igmp_type == IGMP_MEMBERSHIP_QUERY){
         #ifdef DEBUG
-        printf("IGMP querier port: %s\n", incoming_port);
-        printf("IGMP group address: ");
-        print_ip_address(igmp_t->igmp_gaddr);
-        printf("\n");
-        printf("IGMP dest address: %x - ",ip->ip_daddr);
-        print_ip_address(ip->ip_daddr);
-        printf("\n");
-        printf("Hash: %d\n",make_address_hash(igmp_t->igmp_gaddr));
+            printf("IGMP querier port: %s\n", incoming_port);
+            printf("IGMP group address: ");
+            print_ip_address(igmp_t->igmp_gaddr);
+            printf("\n");
+            printf("IGMP dest address: %x - ",ip->ip_daddr);
+            print_ip_address(ip->ip_daddr);
+            printf("\n");
+            printf("Hash: %d\n",make_address_hash(igmp_t->igmp_gaddr));
         #endif
 
         /* ulozi do global premmenej port na ktorom je querier */
         igmp_querier_port = incoming_port;
 
-        //GENERAL QUERY = posli na vsetky rozhrania
+        /* GENERAL QUERY = posli na vsetky rozhrania */
         if(igmp_t->igmp_gaddr == IGMP_GENERAL_QUERY){
             #ifdef DEBUG
             printf("IGMP general query\n");
             #endif
 
-            //posli broadcast na vsetky rozhrania a cakaj na odpoved
+            /* posli broadcast na vsetky rozhrania a cakaj na odpoved */
             send_broadcast(packet,header,incoming_port);
             return;
-        }else {//group specific query
+        }else { /* group specific query */
             /* posle paket vsetkym v danej skupine*/
 
             /* najdi skupinu v zozname */
@@ -666,7 +670,7 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
 
 }
 
-/* Na vystup vypise ip adresu */
+/** Na vystup vypise ip adresu */
 void print_ip_address(uint32_t ip_address){
 
     unsigned char *octet = convert_ip(ip_address);
@@ -674,6 +678,8 @@ void print_ip_address(uint32_t ip_address){
     printf("%d.%d.%d.%d",octet[0],octet[1],octet[2],octet[3]);
 }
 
+
+/** Zobrazi igmp tabulku */
 void print_igmp_table(){
     int i;
     struct igmp_group_table *founded;
@@ -682,11 +688,11 @@ void print_igmp_table(){
     printf("GroupAddr\tIfaces\t\n");
     pthread_mutex_lock(&mutex_igmp);
     for(i = 0; i < HASH_LENGTH;i++){
-        //prechadzaj len tie kde su nejake hodnoty
+        /* prechadzaj len tie kde su nejake hodnoty */
         if(igmp_groups[i] == NULL) continue;
         if(igmp_groups[i]->deleted == 1) continue;
 
-        //ak sa v jednom indexe nachadza viac hodnot, tak vypis
+        /* ak sa v jednom indexe nachadza viac hodnot, tak vypis*/
         if(igmp_groups[i]->next != NULL){
             #ifdef DEBUG
             printf("\nkolizne pre hash %i\n",i);
@@ -702,7 +708,7 @@ void print_igmp_table(){
             #ifdef DEBUG
             printf("koniec kolizne\n\n");
             #endif
-        } else {//inak vypisuj len hodnoty na indexoch
+        } else {/* inak vypisuj len hodnoty na indexoch */
 
             print_ip_address(igmp_groups[i]->group_addr);
             printf("\t");
@@ -714,7 +720,9 @@ void print_igmp_table(){
     printf("-----------------------------------------\n");
 }
 
+/** Vypise vsetkych clenov igmp multicast skupiny */
 inline void print_hosts(struct igmp_group_table *group){
+
     struct igmp_host *hosts;
     for(hosts = group->igmp_hosts; hosts != NULL; hosts = hosts->next){
         /* preskoc odstranene zaznamy */
