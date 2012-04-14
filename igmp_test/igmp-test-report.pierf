@@ -1,0 +1,27 @@
+<pierf>
+<port id="eth9" device="eth9" />
+
+<scene id="igmp">
+<seq>
+
+<!-- igmp v3 report  -->
+<packet port="eth9">
+<eth from="00:0c:29:c7:3d:ff" to="01:00:5E:00:00:16"/>
+<iphdr from="192.168.1.4" to="224.0.0.22" packetid="1" ttl="1" protocol="igmp" options="94:04:00:00"/>
+<igmp version="3" type="report">
+  <group type="include" to="225.1.1.1">
+    <source address="192.168.10.100" />
+    <source address="192.168.10.101" />
+  </group>
+  <group type="include" to="225.1.1.2">
+    <source address="192.168.10.102" />
+    <source address="192.168.10.103" />
+  </group>
+</igmp>
+</packet>
+
+</seq>
+</scene>
+
+<play scene="igmp" />
+</pierf>
