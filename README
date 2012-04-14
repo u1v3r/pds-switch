@@ -1,3 +1,37 @@
-PROJEK DO PREDMETU PDS
+-------------------------------------
+ 
+ Projekt do predmetu PDS
 
-termin odovzdania: ?
+ Autor: Radovan Dvorský,  xdvors08
+
+-------------------------------------
+
+~~~~~~~~~~~~~~~~~~~~~~~	  
+Požiadavky
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Program vyžaduje nasledujúce knižnice:
+  - >=libnet-1.1.4
+  - >=libpcap-1.1.1
+  - podpora pthread
+
+Program by mal byť funkčný na lubovoľnej linuxovej distribúcii, ktorá obsahuje 
+požadované knižnice. Okrem toho by mala byť aplikácia funkčná na BSD systémoch.
+
+
+~~~~~~~~~~~~~~~~~~~~~~~	  
+Kompilácia a spustenie
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Kompilácia prebehne po zavolaní príkazu "make". Po kompilácii sa vytvorí
+spustitelný súbor s názvom "switch".
+
+~~~~~~~~~~~~~~~~~~~~~~~	  
+Podporované príkazy
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Program podporuje všetky príkazy podľa zadania:
+  - cam - vypíše obsah cam tabulky
+  - stat - vypíše štatistiku prijatých a odoslaných paketov
+  - igmp - vypíše multicast skupiny
+  - quit - ukončí program
