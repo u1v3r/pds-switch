@@ -10,7 +10,7 @@
 
 #include "packet_headers.h"
 
-#define HASH_LENGTH 257     /* velkost cam a igmp tabulky */
+#define HASH_LENGTH 257     /* velkost cam a igmp tabulky - malo by byt prvocislo */
 #define IP_ADDRESS_LENGTH 4
 
 #define IGMP_PROTO 0x02
@@ -26,15 +26,15 @@ struct igmp_host{
     unsigned long age;      /* udava dobu poslednej komunikacie pre zariadenie */
     struct igmp_host *next; /* ukazuje na dalsi prvok zoznamu */
     //struct igmp_host *last_element;
-    int deleted;
+    int deleted;            /* 1 host bol zmazany, 0 - host existuje */
 };
 
 struct igmp_group_table{
-    struct igmp_host *igmp_hosts;
-    uint32_t group_addr;            /*ip adresa skupiny */
-    struct igmp_group_table *next;
+    struct igmp_host *igmp_hosts;   /* clenovia skupiny */
+    uint32_t group_addr;            /* ip adresa skupiny */
+    struct igmp_group_table *next;  /* ukazatel na nasedujucu skupinu */
     int length;                     /* udava pocet clenov multicast skupiny */
-    int deleted;
+    int deleted;                    /* ak je 1 skupina bola zmazana 0 existuje */
 };
 
 struct igmp_group_table *igmp_groups[HASH_LENGTH];

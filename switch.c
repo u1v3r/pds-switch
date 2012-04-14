@@ -143,7 +143,7 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
 
     struct stat_table *founded;
     struct ether_header *ether = (struct ether_header*)(packet);
-    struct ip_header *ip = (struct ip_header*)(packet + ETHERNET_SIZE);
+    struct ip_header_def *ip = (struct ip_header_def*)(packet + ETHERNET_SIZE);
 
     u_int8_t source_mac[ETHER_ADDR_LEN],dest_mac[ETHER_ADDR_LEN];
     memcpy(source_mac,ether->ether_shost,ETHER_ADDR_LEN);
@@ -185,7 +185,7 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
     pthread_mutex_unlock(&mutex);
 
     /* ak je prijaty igmp packet */
-    if(ip->ip_proto == IGMP_PROTO){
+    if(ip->ip_p == IGMP_PROTO){
         #ifdef DEBUG
             printf("\n\n IGMP packet \n\n");
         #endif
@@ -533,10 +533,12 @@ void quit_switch(){
 
 /** Postara sa o spracovanie igmp packetu */
 void process_igmp_packet(const u_char *packet,struct ether_header *ether,
-                         struct ip_header *ip, char *incoming_port,
+                         struct ip_header_def *ip, char *incoming_port,
                          const struct pcap_pkthdr *header){
 
-    u_int ip_len = (ip->ip_ver_ihl & 0x0F) * 4;/* velost ip paketu */
+    u_int ip_len = IP_HL(ip)*4;/* velost ip paketu */
+
+
     struct igmp_header *igmp_t = (struct igmp_header *)(packet + ETHERNET_SIZE + ip_len);
 
     /* paket posiela querier zisti port na ktorom sa nachadza */
@@ -605,8 +607,7 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
 
     /* MEMBERSHIP REPORT */
     if(igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V1 ||
-       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V2 /*||
-       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V3*/){
+       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V2){
 
         if(igmp_querier_port == NULL){
             #ifdef DEBUG
@@ -647,6 +648,32 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
         return;
     }
 
+
+    /* IGMP REPORT V3 */
+    if(igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V3){
+        struct igmpv3_report *igmp_report = (struct igmpv3_report *)(packet + ETHERNET_SIZE + ip_len);
+
+        if(igmp_querier_port == NULL){
+            #ifdef DEBUG
+            printf("IGMP querier neexistuje, nemozem poslat membership report\n");
+            #endif
+            return;
+        }
+
+        /* Zisti port a group adresu a uloz do group_table */
+        pthread_mutex_lock(&mutex_igmp);
+
+        /* vloz novu alebo uprav skupinu resp. clena skupiny */
+        add_group(igmp_report->group_rec.group,incoming_port);
+
+        pthread_mutex_unlock(&mutex_igmp);
+
+        /* preposli paket na rozhranie querieru */
+        send_unicast(packet,header,igmp_querier_port);
+
+        return;
+    }
+
     /* IGMP LEAVE */
     if(igmp_t->igmp_type == IGMP_LEAVE_GROUP){
 
@@ -654,9 +681,9 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
         pthread_mutex_lock(&mutex_igmp);
         if(remove_host(igmp_t->igmp_gaddr,incoming_port) == 0){
             #ifdef DEBUG
-            printf("Clena skupiny ");
-            print_ip_address(igmp_t->igmp_gaddr);
-            printf(" sa nepodarilo odstranit\n");
+                printf("Clena skupiny ");
+                print_ip_address(igmp_t->igmp_gaddr);
+                printf(" sa nepodarilo odstranit\n");
             #endif
 
         }

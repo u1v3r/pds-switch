@@ -13,23 +13,23 @@ unsigned make_ether_hash(u_int8_t *value){
     return (hash_value % HASH_LENGTH);
 }
 
-/** Vyhlada zaznam v tabulke a vrati ho, inak NULL*/
+/** Vyhlada zaznam v tabulke a vrati ho, inak NULL */
 struct cam_table *find_packet_value(u_int8_t *value){
 
     struct cam_table *founded;
 
 
     #ifdef DEBUG
-    printf("\nSearching hash value %d in cam_table...",make_ether_hash(value));
+        printf("\nSearching hash value %d in cam_table...",make_ether_hash(value));
     #endif
 
     for(founded = cam_table_t[make_ether_hash(value)]; founded != NULL ; founded = founded->next){
         if(comapre_mac(value,founded->source_mac) == 1){//nasiel sa
             #ifdef DEBUG
-            printf("Found\n");
-            printf("Adress: %x:%x:%x:%x:%x:%x\n",founded->source_mac[0],founded->source_mac[1],
-                   founded->source_mac[2],founded->source_mac[3],founded->source_mac[4],founded->source_mac[5]);
-            printf("Port: %s\n",founded->port);
+                printf("Found\n");
+                printf("Adress: %x:%x:%x:%x:%x:%x\n",founded->source_mac[0],founded->source_mac[1],
+                       founded->source_mac[2],founded->source_mac[3],founded->source_mac[4],founded->source_mac[5]);
+                printf("Port: %s\n",founded->port);
             #endif
             return founded;
         }
@@ -51,7 +51,7 @@ struct cam_table *find_packet_value(u_int8_t *value){
     */
 
     #ifdef DEBUG
-    printf("Not found\n");
+        printf("Not found\n");
     #endif
 
     return NULL;
@@ -66,7 +66,7 @@ struct cam_table *add_value(u_int8_t source_mac[ETHER_ADDR_LEN], char *port){
     //mac adresa sa este v zozname nenachadza
     if((founded = find_packet_value(source_mac)) == NULL){
         #ifdef DEBUG
-        printf("Adding to cam_table...");
+            printf("Adding to cam_table...");
         #endif
 
         //vytvor novy zaznam
@@ -84,10 +84,10 @@ struct cam_table *add_value(u_int8_t source_mac[ETHER_ADDR_LEN], char *port){
         cam_table_t[hash_value] = founded;
 
         #ifdef DEBUG
-        printf("\nport: %s\n",founded->port);
-        printf("mac:");print_mac_adress(founded->source_mac);
-        printf("\nage: %li\n",founded->age);
-        printf("Hash %d added to cam_table\n",hash_value);
+            printf("\nport: %s\n",founded->port);
+            printf("mac:");print_mac_adress(founded->source_mac);
+            printf("\nage: %li\n",founded->age);
+            printf("Hash %d added to cam_table\n",hash_value);
         #endif
     }else {
         founded->age = (unsigned long)time(NULL);
@@ -111,9 +111,9 @@ int comapre_mac(u_int8_t *a,u_int8_t *b){
 u_int8_t *copy_dupl_mac(u_int8_t *mac){
 
     #ifdef DEBUG
-    printf("Kopirujem mac:");
-    print_mac_adress(mac);
-    printf("\n");
+        printf("Kopirujem mac:");
+        print_mac_adress(mac);
+        printf("\n");
     #endif
     u_int8_t *returned;
     int i;
@@ -157,7 +157,7 @@ void print_cam_table(){
         //ak sa v jednom indexe nachadza viac hodnot, tak vypis
         if(cam_table_t[i]->next != NULL){
             #ifdef DEBUG
-            printf("\nkolizne pre hash %i\n",i);
+                printf("\nkolizne pre hash %i\n",i);
             #endif
             //postupne vypisuj
             for(founded = cam_table_t[i]; founded != NULL; founded = founded->next){
@@ -167,7 +167,7 @@ void print_cam_table(){
                 pocet++;
             }
             #ifdef DEBUG
-            printf("koniec kolizne\n\n");
+                printf("koniec kolizne\n\n");
             #endif
         } else {//inak vypisuj len hodnoty na indexoch
             print_mac_adress(cam_table_t[i]->source_mac);
@@ -193,7 +193,7 @@ void cam_table_age_checker(){
         //kazdych n sekund skontroluj ci tabulka neobsahuje stare zaznamy
         sleep(DELETE_WAIT_TIME);
         #ifdef DEBUG
-        printf("\n\nCam table age checking...\n\n");
+            printf("\n\nCam table age checking...\n\n");
         #endif
         pthread_mutex_lock(&mutex);
         for(i = 0; i < HASH_LENGTH; i++){
@@ -212,16 +212,16 @@ void cam_table_age_checker(){
                         if(prev_node) prev_node->next = node->next;
                         else cam_table_t[i] = node->next;
                         #ifdef DEBUG
-                        printf("Index - %i\n",i);
-                        print_mac_adress(node->source_mac);
-                        printf("\n");
-                        printf("cas: %lu",(time(NULL) - node->age));
+                            printf("Index - %i\n",i);
+                            print_mac_adress(node->source_mac);
+                            printf("\n");
+                            printf("cas: %lu",(time(NULL) - node->age));
                         #endif
 
                         free(node);
 
                         #ifdef DEBUG
-                        printf("SMAZANE\n");
+                            printf("SMAZANE\n");
                         #endif
                         break;
                     }

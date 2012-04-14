@@ -41,7 +41,7 @@ void get_all_devices(pcap_if_t *);
 void user_input();
 void quit_switch();
 void process_igmp_packet(const u_char *,struct ether_header *,
-                         struct ip_header *, char *,
+                         struct ip_header_def *, char *,
                          const struct pcap_pkthdr *);
 void print_ip_address(uint32_t);
 void print_igmp_table();

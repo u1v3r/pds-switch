@@ -2,14 +2,13 @@
 
 
 /**
- * Vlozi zaznam do skupiny alebo ak neexistuje tak vytvori novu
+ * Vlozi zaznam(port) do skupiny alebo ak neexistuje tak vytvori novu
  * skupinu
  */
 struct igmp_group_table *add_group(uint32_t address, char *port){
 
 
     struct igmp_group_table *founded = find_group(address); /* vyhlada skupinu */
-    //unsigned hash_value = 0;
     struct igmp_host *tmp_host;/* vkladany host */
 
     /* multicast skupina existuje, treba len pridat clena skupiny */
@@ -21,7 +20,7 @@ struct igmp_group_table *add_group(uint32_t address, char *port){
                 printf("Clen skupiny bol zmazany, pouzijem jeho miesto\n");
             #endif
 
-            /* uvolni pamat pre stare zaznamy */
+            /* uvolni pamat starych zaznaov */
             free((void *)founded->igmp_hosts);
 
             /* vytvorenie novejskupiny hostov stareho clena */
@@ -73,24 +72,20 @@ struct igmp_group_table *add_group(uint32_t address, char *port){
         /* noveho clena prida na zaciatok */
         founded->igmp_hosts = new_host; /* novy dopredu */
 
-        /* a pridame ho nakoniec
-        founded->igmp_hosts->last_element->next = new_host;
-        founded->igmp_hosts->last_element = new_host;
-        */
 
         /* inkrementujeme pocitadlo */
         founded->length = founded->length + 1;
 
 
         #ifdef DEBUG
-        printf("Nova velkost je: %d\n",founded->length);
+            printf("Nova velkost je: %d\n",founded->length);
         #endif
 
 
     }else {
         /* multicast skupina este nie je v tabulke */
         #ifdef DEBUG
-        printf("IGMP - Adding to group_table...");
+            printf("IGMP - Adding to group_table...");
         #endif
 
         founded = create_group(address,port);
@@ -133,9 +128,9 @@ inline struct igmp_group_table *create_group(uint32_t address, char *port){
     igmp_groups[hash_value] = founded;
 
     #ifdef DEBUG
-    printf("\nVytovrena nova multicast skupina\n");
-    printf("address:");print_ip_address(address);
-    printf("\nhash %d added to group_table\n",hash_value);
+        printf("\nVytovrena nova multicast skupina\n");
+        printf("address:");print_ip_address(address);
+        printf("\nhash %d added to group_table\n",hash_value);
     #endif
 
     return founded;
@@ -190,15 +185,7 @@ int remove_host(uint32_t address, char *port){
             group->deleted = 1;
             return 1;
         }
-    }/*else if(group->length == 2){
-
-        struct igmp_host *next_host = group->igmp_hosts->next;
-
-        if(strcmp(next_host->port,port) == 0){
-            free((void *)next_host);
-            return 1;
-        }
-    }*/else {/* viac clenov */
+    }else {/* viac clenov */
 
 
         struct igmp_host *host = group->igmp_hosts;
@@ -207,7 +194,7 @@ int remove_host(uint32_t address, char *port){
 
             if(strcmp(host->port,port) == 0){
                 #ifdef DEBUG
-                printf("Odstranujem port %s\n",port);
+                    printf("Odstranujem port %s\n",port);
                 #endif
                 host->deleted = 1;
                 group->length = group->length - 1;
@@ -222,6 +209,7 @@ int remove_host(uint32_t address, char *port){
     return 0;
 }
 
+/** Vytvori "hash" pre ip */
 unsigned make_address_hash(uint32_t address){
 
     return (address % HASH_LENGTH);

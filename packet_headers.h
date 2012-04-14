@@ -13,32 +13,58 @@
 #define ETHERNET_SIZE 14
 #define DEBUG 1
 
-struct ether_header
-{
+/** zdroj: http://www.tcpdump.org/pcap.html */
+
+struct ether_header{
   u_int8_t  ether_dhost[ETHER_ADDR_LEN]; /* dst adresa */
   u_int8_t  ether_shost[ETHER_ADDR_LEN]; /* src adresa */
   u_int16_t ether_type;
 };
 
-struct ip_header {
-    u_char  ip_ver_ihl;        /* Version (4 bits) + Internet header length (4 bits) */
-    u_char  ip_tos;            /* Type of service */
-    u_short ip_tlen;           /* Total length */
-    u_short ip_identification; /* Identification */
-    u_short ip_flags_fo;       /* Flags (3 bits) + Fragment offset (13 bits) */
-    u_char  ip_ttl;            /* Time to live */
-    u_char  ip_proto;          /* Protocol */
-    u_short ip_sum;            /* Header checksum */
-    uint32_t  ip_saddr;        /* Source address */
-    uint32_t  ip_daddr;        /* Destination address */
-    u_int   ip_op_pad;         /* Option + Padding */
-};
 
-struct igmp_header {
+struct ip_header_def {
+		u_char ip_vhl;		/* version << 4 | header length >> 2 */
+		u_char ip_tos;		/* type of service */
+		u_short ip_len;		/* total length */
+		u_short ip_id;		/* identification */
+		u_short ip_off;		/* fragment offset field */
+	#define IP_RF 0x8000		/* reserved fragment flag */
+	#define IP_DF 0x4000		/* dont fragment flag */
+	#define IP_MF 0x2000		/* more fragments flag */
+	#define IP_OFFMASK 0x1fff	/* mask for fragmenting bits */
+		u_char ip_ttl;		/* time to live */
+		u_char ip_p;		/* protocol */
+		u_short ip_sum;		/* checksum */
+		uint32_t  ip_saddr;        /* Source address */
+        uint32_t  ip_daddr;        /* Destination address */
+	};
+	#define IP_HL(ip)		(((ip)->ip_vhl) & 0x0f)
+	#define IP_V(ip)		(((ip)->ip_vhl) >> 4)
+
+
+struct igmp_header{
     u_char  igmp_type;           /* Type */
     u_char  igmp_mrt;            /* Max response time */
     u_short igmp_sum;            /* Checksum */
     uint32_t igmp_gaddr;         /* Group address */
+};
+
+
+struct igmp_group_record {
+	u_int8_t	record_type;	/* record types for membership report */
+	u_int8_t	auxlen;		/* aux data length (must be zero)  */
+	u_int16_t	numsrc;		/* number of sources		   */
+	uint32_t	group;		/* group address		   */
+	//uint32_t	src[1];		/* source address list		   */
+};
+
+struct igmpv3_report {
+	u_int8_t	igmp_type;	/* version & type of IGMP message  */
+	u_int8_t	igmp_reserved1;	/* reserved (set to zero)	   */
+	u_int16_t	igmp_cksum;	/* IP-style checksum		   */
+	u_int16_t	igmp_reserved2;	/* reserved (set to zero)	   */
+	u_int16_t	igmp_grpnum;	/* number of group record	   */
+	struct igmp_group_record group_rec;
 };
 
 #endif // PACKET_HEADERS_H_INCLUDED
