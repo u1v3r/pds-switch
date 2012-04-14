@@ -39,7 +39,7 @@ void init_switch(){
             threads_count = threads_count + DEFAULT_PORTS_COUNT;
             threads = (pthread_t *) realloc(threads,threads_count * sizeof(pthread_t));
             #ifdef DEBUG
-            printf("Memory re-allocation: %u\n",threads_count * sizeof(pthread_t));
+            printf("Memory re-allocation: %lu\n",(unsigned long)threads_count * sizeof(pthread_t));
             #endif
         }
 
@@ -314,7 +314,7 @@ struct stat_table *add_stat_value(char *port){
     stat_table_t[hash_value] = add;
 
     return add;
-};
+}
 
 /** Vytvori hash pre stat tabulku */
 unsigned make_stat_hash(char *value){
@@ -607,7 +607,8 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
 
     /* MEMBERSHIP REPORT */
     if(igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V1 ||
-       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V2){
+       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V2 ||
+       igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V3){
 
         if(igmp_querier_port == NULL){
             #ifdef DEBUG
@@ -616,21 +617,66 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
             return;
         }
 
-        /* Zisti port a group adresu a uloz do group_table */
-        pthread_mutex_lock(&mutex_igmp);
+        /* pri kazdom reporte skontroluje ci neobsahuje neaktivnych hostov */
+        igmp_table_check();
 
-        /* vloz novu alebo uprav skupinu resp. clena skupiny */
-        add_group(igmp_t->igmp_gaddr,incoming_port);
+        uint32_t gaddr;
 
-        pthread_mutex_unlock(&mutex_igmp);
+        if(igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V3){
+            struct igmpv3_report *igmp_report = (struct igmpv3_report *)(packet + ETHERNET_SIZE + ip_len);
+            gaddr = igmp_report->group_rec.group;
+        }else{
+            gaddr = igmp_t->igmp_gaddr;
+        }
+
 
         /* preposli paket na rozhranie querieru */
         send_unicast(packet,header,igmp_querier_port);
 
-        /* rovnako preposli aj na rozhrania clenov skupiny */
-        /* TREBA ZISTIT CI TREBA PREPOSIELAT AJ OSTATNYM CLENOM SKUPINY
+
+        /* pri genral query treba preposlat paket aj na rozhrania ostatnych hostov */
+        pthread_mutex_lock(&mutex_igmp);
+        struct igmp_group_table *group = find_group(gaddr);
+        pthread_mutex_unlock(&mutex_igmp);
+
+
+        /* Zisti port a group adresu a uloz do group_table */
+        pthread_mutex_lock(&mutex_igmp);
+
+        /* vloz novu alebo uprav skupinu resp. clena skupiny */
+        add_group(gaddr,incoming_port);
+
+        pthread_mutex_unlock(&mutex_igmp);
+
+        int i;
+        /* skupina este neexistuje, takze bol general query */
+        if(group == NULL || group->deleted == 1){
+            /* preposli na vsetky rozhrania okrem querieru */
+            for(i = 0; i < HASH_LENGTH; i++){
+
+                /* ak neobsahuje ziadny zaznam */
+                if(stat_table_t[i] == NULL) continue;
+
+                /* na querier uz bolo poslane a na port z ktoreho sa posiela uz neposialaj */
+                if(stat_table_t[i]->port == incoming_port || stat_table_t[i]->port == igmp_querier_port) {
+                    continue;
+                }
+
+                #ifdef DEBUG
+                    printf("Posielam membership report na hosta: %s\n",stat_table_t[i]->port);
+                #endif
+
+                send_unicast(packet,header,stat_table_t[i]->port);
+            }
+        }
+
+
+
+
+        /* pri rovnako preposli aj na rozhrania clenov skupiny */
+        /* TREBA ZISTIT CI TREBA PREPOSIELAT AJ OSTATNYM CLENOM SKUPINY *
         struct igmp_host *tmp_hosts;
-        for(tmp_hosts = find_group(igmp_t->igmp_gaddr); tmp_hosts != NULL; tmp_hosts = tmp_hosts->next){
+        for(tmp_hosts = find_group(gaddr); tmp_hosts != NULL; tmp_hosts = tmp_hosts->next){
 
             // neposielaj na port z ktoreho report prisiel a ak je host zmazany
             if(strcmp(tmp_hosts->port,incoming_port) == 0 || tmp_hosts->deleted == 1){
@@ -649,8 +695,9 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
     }
 
 
-    /* IGMP REPORT V3 */
+    /* IGMP REPORT V3 *
     if(igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V3){
+
         struct igmpv3_report *igmp_report = (struct igmpv3_report *)(packet + ETHERNET_SIZE + ip_len);
 
         if(igmp_querier_port == NULL){
@@ -660,22 +707,23 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
             return;
         }
 
-        /* Zisti port a group adresu a uloz do group_table */
+        /* Zisti port a group adresu a uloz do group_table *
         pthread_mutex_lock(&mutex_igmp);
 
-        /* vloz novu alebo uprav skupinu resp. clena skupiny */
+        /* vloz novu alebo uprav skupinu resp. clena skupiny*
         add_group(igmp_report->group_rec.group,incoming_port);
 
         pthread_mutex_unlock(&mutex_igmp);
 
-        /* preposli paket na rozhranie querieru */
+        /* preposli paket na rozhranie querieru *
         send_unicast(packet,header,igmp_querier_port);
 
         return;
     }
+    */
 
     /* IGMP LEAVE */
-    if(igmp_t->igmp_type == IGMP_LEAVE_GROUP){
+    if(igmp_t->igmp_type == IGMP_LEAVE_GROUP_V2){
 
         /* Odstrani clena zo skupiny */
         pthread_mutex_lock(&mutex_igmp);
@@ -783,4 +831,52 @@ int multicast_type(uint32_t address){
 
     /* nie je multicast*/
     return 0;
+}
+
+/** Skontroluje aktivitu clenov jednotlivych skupin a neaktivnych odstrani */
+void igmp_table_check(){
+
+    int i;
+    struct igmp_group_table *founded;
+
+    pthread_mutex_lock(&mutex_igmp);
+
+        #ifdef DEBUG
+            printf("\nIGMP table age checking...\n");
+        #endif
+        for(i = 0; i < HASH_LENGTH;i++){
+            /* prechadzaj len tie kde su nejake hodnoty */
+            if(igmp_groups[i] == NULL) continue;
+            if(igmp_groups[i]->deleted == 1) continue;
+
+            /* skupina musi obsahovat nejaky zaznam */
+            if(igmp_groups[i]->next != NULL){
+
+                for(founded = igmp_groups[i]; founded != NULL; founded = founded->next){
+                    struct igmp_host *hosts;
+                    for(hosts = founded->igmp_hosts; hosts != NULL; hosts = hosts->next){
+                        /* preskoc odstranene zaznamy */
+                        if(hosts->deleted == 1) continue;
+
+                        /* "odstrani" hosta zo skupiny */
+                        if(time(NULL) - hosts->age >= VALID_AGE){
+                            remove_host(founded->group_addr,hosts->port);
+                        }
+                    }
+                }
+            } else {
+                struct igmp_host *hosts;
+                for(hosts = igmp_groups[i]->igmp_hosts; hosts != NULL; hosts = hosts->next){
+                        /* preskoc odstranene zaznamy */
+                        if(hosts->deleted == 1) continue;
+
+                        /* "odstrani" hosta zo skupiny */
+                        if(time(NULL) - hosts->age >= VALID_AGE){
+                            remove_host(igmp_groups[i]->group_addr,hosts->port);
+                        }
+                    }
+            }
+        }
+
+    pthread_mutex_unlock(&mutex_igmp);
 }

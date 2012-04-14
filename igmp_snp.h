@@ -10,8 +10,10 @@
 
 #include "packet_headers.h"
 
-#define HASH_LENGTH 257     /* velkost cam a igmp tabulky - malo by byt prvocislo */
+#define HASH_LENGTH 257         /* velkost cam a igmp tabulky - malo by byt prvocislo */
 #define IP_ADDRESS_LENGTH 4
+//#define CHECKER_SLEEP_TIME 120  /* igmp tabulka sa kontroluje vzdy po 2 minutach */
+#define VALID_AGE 300           /* platnost zaznamu 5 minut */
 
 #define IGMP_PROTO 0x02
 #define IGMP_MEMBERSHIP_QUERY 0x11
@@ -25,7 +27,6 @@ struct igmp_host{
     char *port;             /* port na ktorom sa zariadenie nachadza */
     unsigned long age;      /* udava dobu poslednej komunikacie pre zariadenie */
     struct igmp_host *next; /* ukazuje na dalsi prvok zoznamu */
-    //struct igmp_host *last_element;
     int deleted;            /* 1 host bol zmazany, 0 - host existuje */
 };
 

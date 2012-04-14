@@ -47,4 +47,5 @@ void print_ip_address(uint32_t);
 void print_igmp_table();
 inline void print_hosts(struct igmp_group_table *);
 int multicast_type(uint32_t);
+void igmp_table_check();
 #endif // SWITCH_H_INCLUDED

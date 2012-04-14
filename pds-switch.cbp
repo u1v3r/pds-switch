@@ -36,6 +36,7 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="Makefile" />
 		<Unit filename="cam_table.c">
 			<Option compilerVar="CC" />
 			<Option target="&lt;{~None~}&gt;" />

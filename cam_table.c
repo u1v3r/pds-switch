@@ -128,7 +128,7 @@ u_int8_t *copy_dupl_mac(u_int8_t *mac){
 }
 
 /** Na vystup vypise mac adresu */
-void print_mac_adress(u_int8_t mac[ETHER_ADDR_LEN]){
+void print_mac_adress(uint8_t *mac){
 
     int i = ETHER_ADDR_LEN;
     int j = 0;
@@ -190,24 +190,24 @@ void cam_table_age_checker(){
     int i;
 
     while(0 == 0){
-        //kazdych n sekund skontroluj ci tabulka neobsahuje stare zaznamy
+        /* kazdych n sekund skontroluj ci tabulka neobsahuje stare zaznamy */
         sleep(DELETE_WAIT_TIME);
         #ifdef DEBUG
             printf("\n\nCam table age checking...\n\n");
         #endif
         pthread_mutex_lock(&mutex);
         for(i = 0; i < HASH_LENGTH; i++){
-            //preskoc  indexy bez zaznamu
+            /* preskoc  indexy bez zaznamu */
             if(cam_table_t[i] == NULL) continue;
 
-            //ak existuje viac zaznomov v skupine
+            /* ak existuje viac zaznomov v skupine*/
             if(cam_table_t[i]->next != NULL){
 
                 struct cam_table *node, *prev_node = NULL;
                 node = cam_table_t[i];
 
                 while(node) {
-                    //vymaz vsetky zaznamy starsie ako AGE_CHECK_TIME
+                    /* vymaz vsetky zaznamy starsie ako AGE_CHECK_TIME*/
                     if((time(NULL) - node->age) >= AGE_CHECK_TIME){
                         if(prev_node) prev_node->next = node->next;
                         else cam_table_t[i] = node->next;
@@ -248,15 +248,9 @@ void cam_table_age_checker(){
 
             } else {
                 if((time(NULL) - cam_table_t[i]->age) >= AGE_CHECK_TIME){
-
                     cam_table_t[i] = NULL;//odstran zaznam
-
                 }
             }
-
-
-
-
         }
         pthread_mutex_unlock(&mutex);
     }
@@ -267,17 +261,17 @@ void print_cam_table_stats(){
 
     int i;
 
-    printf("\n------------------STAT-----------------\n");
-    printf("Iface\tSent-B\tSent-frm\tRecv-B\tRecv-frm\n");
+    printf("\n-------------------------------STAT------------------------------\n");
+    printf("Iface\tSent-B\t\tSent-frm\tRecv-B\t\tRecv-frm\n");
     for(i = 0; i < HASH_LENGTH;i++){
         if(stat_table_t[i] == NULL) continue;
 
         printf("%s\t",stat_table_t[i]->port);
-        printf("%i\t",stat_table_t[i]->sent_bytes);
-        printf("%i\t",stat_table_t[i]->sent_frames);
-        printf("%i\t",stat_table_t[i]->recv_bytes);
-        printf("%i\t\n",stat_table_t[i]->recv_frames);
+        printf("%i\t\t",stat_table_t[i]->sent_bytes);
+        printf("%i\t\t",stat_table_t[i]->sent_frames);
+        printf("%i\t\t",stat_table_t[i]->recv_bytes);
+        printf("%i\n",stat_table_t[i]->recv_frames);
 
     }
-    printf("---------------------------------------\n");
+    printf("-----------------------------------------------------------------\n");
 }

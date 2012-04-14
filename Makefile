@@ -1,8 +1,8 @@
 # Makefile pre pre projekt na PDS
 
-ONAME=pds-switch
+ONAME=switch
 CC=gcc
-CFLAGS=-Wall -lpcap -pthread -lnet main.c igmp_snp.c -o $(ONAME)
+CFLAGS=-Wall -w -lpcap -pthread -lnet main.c igmp_snp.c -o $(ONAME)
 
 
 build:

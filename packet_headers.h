@@ -2,7 +2,7 @@
 #define PACKET_HEADERS_H_INCLUDED
 
 /*#include <sys/types.h>*/
-/*#include <stdint.h>*/
+#include <stdint.h>
 #include <libnet.h>
 
 #define MULTICAST_ALL_ON_SUBNET 0x10000e0 /* IP 224.0.0.1 */
@@ -11,7 +11,17 @@
 #define MULTICAST_TYPE_GROUP 1
 #define MULTICAST_TYPE_ALL 2
 #define ETHERNET_SIZE 14
-#define DEBUG 1
+#ifndef ETHER_ADDR_LEN
+#define ETHER_ADDR_LEN      0x6
+#endif
+//#define DEBUG 1
+
+typedef uint8_t u_int8_t;
+typedef uint16_t u_int16_t;
+typedef uint32_t u_int32_t;
+typedef uint8_t u_char;
+typedef unsigned short u_short;
+
 
 /** zdroj: http://www.tcpdump.org/pcap.html */
 
@@ -55,7 +65,7 @@ struct igmp_group_record {
 	u_int8_t	auxlen;		/* aux data length (must be zero)  */
 	u_int16_t	numsrc;		/* number of sources		   */
 	uint32_t	group;		/* group address		   */
-	//uint32_t	src[1];		/* source address list		   */
+	//uint32_t	src[25];		/* source address list		   */
 };
 
 struct igmpv3_report {

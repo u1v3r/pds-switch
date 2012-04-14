@@ -21,7 +21,7 @@ struct cam_table *find_packet_value(u_int8_t *);
 struct cam_table *add_value(u_int8_t source_mac[ETHER_ADDR_LEN], char *);
 int comapre_mac(u_int8_t *,u_int8_t *);
 u_int8_t *copy_dupl_mac(u_int8_t *);
-void print_mac_adress(u_int8_t mac[ETHER_ADDR_LEN]);
+void print_mac_adress(uint8_t mac[ETHER_ADDR_LEN]);
 void print_cam_table();
 void cam_table_age_checker();
 void print_cam_table_stats();

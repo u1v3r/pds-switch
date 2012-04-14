@@ -2,3 +2,6 @@ bin/
 obj/
 pds-switch
 pds-switch.o
+switch
+switch.o
+*.zip
