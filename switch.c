@@ -207,8 +207,9 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
     /* zachytava vsetky multicast pakety, ktore nie su IGMP */
     if(multicast_type(ip->ip_daddr) > 0){
 
-        /*
-        if(multicast_t == MULTICAST_TYPE_ALL){
+        /* Packets with a destination IP (DIP) address in the 224.0.0.X range
+           which are not IGMP must be forwarded on all ports.*/
+        if(multicast_type(ip->ip_daddr) == MULTICAST_TYPE_ALL){
 
             #ifdef DEBUG
             printf("Adresa ");
@@ -218,14 +219,18 @@ void process_packet(char *incoming_port,const struct pcap_pkthdr *header, const 
             send_broadcast(packet,header,incoming_port);
 
         }else {
-        */
+            /* vsetky pakety mimo rozsah 224.0.0.x su poslane na adresu skupiny */
             #ifdef DEBUG
                 printf("\n\n\n MULTICAST pre skupinu ");
                 print_ip_address(ip->ip_daddr);
                 printf(" \n\n\n");
             #endif
+
+            /* Packets with a destination IP address outside 224.0.0.X which are
+               not IGMP should be forwarded according to group-based port
+               membership tables and must also be forwarded on router ports. */
             send_multicast(packet,header,ip->ip_daddr,incoming_port);
-        //}
+        }
 
         return;
     }
@@ -648,16 +653,17 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
 
         pthread_mutex_unlock(&mutex_igmp);
 
+        /* TREBA ZISTIT CI TREBA PREPOSIELAT AJ OSTATNYM CLENOM SKUPINY
         int i;
-        /* skupina este neexistuje, takze bol general query */
+        /* skupina este neexistuje, takze bol general query
         if(group == NULL || group->deleted == 1){
-            /* preposli na vsetky rozhrania okrem querieru */
+            /* preposli na vsetky rozhrania okrem querieru
             for(i = 0; i < HASH_LENGTH; i++){
 
-                /* ak neobsahuje ziadny zaznam */
+                /* ak neobsahuje ziadny zaznam
                 if(stat_table_t[i] == NULL) continue;
 
-                /* na querier uz bolo poslane a na port z ktoreho sa posiela uz neposialaj */
+                /* na querier uz bolo poslane a na port z ktoreho sa posiela uz neposialaj
                 if(stat_table_t[i]->port == incoming_port || stat_table_t[i]->port == igmp_querier_port) {
                     continue;
                 }
@@ -670,27 +676,8 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
             }
         }
 
-
-
-
-        /* pri rovnako preposli aj na rozhrania clenov skupiny */
-        /* TREBA ZISTIT CI TREBA PREPOSIELAT AJ OSTATNYM CLENOM SKUPINY *
-        struct igmp_host *tmp_hosts;
-        for(tmp_hosts = find_group(gaddr); tmp_hosts != NULL; tmp_hosts = tmp_hosts->next){
-
-            // neposielaj na port z ktoreho report prisiel a ak je host zmazany
-            if(strcmp(tmp_hosts->port,incoming_port) == 0 || tmp_hosts->deleted == 1){
-                continue;
-            }
-
-            #ifdef DEBUG
-            printf("Preposielam memebership report na rozhranie clena %s\n",tmp_hosts->port);
-            #endif
-
-
-            send_unicast(packet,header,tmp_hosts->port);
-        }
         */
+
         return;
     }
 
