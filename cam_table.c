@@ -133,7 +133,8 @@ void print_mac_adress(uint8_t *mac){
     int i = ETHER_ADDR_LEN;
     int j = 0;
     do{
-        printf("%s%x",(i == ETHER_ADDR_LEN) ? "" : ":",mac[j++]);
+        printf("%s%02x",(j % 2 == 0 &&  j != 0) ? "." : "",mac[j]);
+        j++;
     }while(--i > 0);
 
     printf("\t");

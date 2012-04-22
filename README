@@ -23,7 +23,7 @@ požadované knižnice. Okrem toho by mala byť aplikácia funkčná na BSD syst
 Kompilácia a spustenie
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Kompilácia prebehne po zavolaní príkazu "make". Po kompilácii sa vytvorí
+Kompilácia prebehne po zavolaní príkazu "gmake". Po kompilácii sa vytvorí
 spustitelný súbor s názvom "switch".
 
 ~~~~~~~~~~~~~~~~~~~~~~~	  
