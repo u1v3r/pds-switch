@@ -622,36 +622,83 @@ void process_igmp_packet(const u_char *packet,struct ether_header *ether,
             return;
         }
 
-        /* pri kazdom reporte skontroluje ci neobsahuje neaktivnych hostov */
-        igmp_table_check();
+
 
         uint32_t gaddr;
 
         if(igmp_t->igmp_type == IGMP_MEMBERSHIP_REPORT_V3){
             struct igmpv3_report *igmp_report = (struct igmpv3_report *)(packet + ETHERNET_SIZE + ip_len);
-            gaddr = igmp_report->group_rec.group;
+            /* pocet group records */
+            int grpnum = igmp_report->igmp_grpnum / 256;
+            int srcnum = 0;
+            int k,l;
+
+            #ifdef DEBUG
+            printf("pocet grp: %d\n",grpnum);
+            #endif
+
+            for(k = 0; k < grpnum; k++){
+                #ifdef DEBUG
+                printf("ip adresa grp:");
+                print_ip_address(igmp_report->group_rec[k].group);
+                printf("\n");
+                #endif
+
+                /* preposli paket na rozhranie querieru */
+                send_unicast(packet,header,igmp_querier_port);
+
+                /* Zisti port a group adresu a uloz do group_table */
+                pthread_mutex_lock(&mutex_igmp);
+
+                /* vloz novu alebo uprav skupinu resp. clena skupiny */
+                add_group(igmp_report->group_rec[k].group,incoming_port);
+
+                pthread_mutex_unlock(&mutex_igmp);
+
+                /* pocet src */
+                srcnum = igmp_report->group_rec[k].numsrc / 256;
+
+                #ifdef DEBUG
+                printf("pocet src %d\n",srcnum);
+                #endif
+
+                for(l = 0; l < srcnum; l++){
+                    #ifdef DEBUG
+                    printf("ip adresa src:");
+                    print_ip_address(igmp_report->group_rec[k].src[l]);
+                    printf("\n");
+                    #endif
+                }
+            }
+
+
+            return;
+            //gaddr = igmp_report->group_rec.group;
         }else{
+
             gaddr = igmp_t->igmp_gaddr;
+
+            /* preposli paket na rozhranie querieru */
+            send_unicast(packet,header,igmp_querier_port);
+
+
+            /* pri genral query treba preposlat paket aj na rozhrania ostatnych hostov */
+            //pthread_mutex_lock(&mutex_igmp);
+            //struct igmp_group_table *group = find_group(gaddr);
+            //pthread_mutex_unlock(&mutex_igmp);
+
+
+            /* Zisti port a group adresu a uloz do group_table */
+            pthread_mutex_lock(&mutex_igmp);
+
+            /* vloz novu alebo uprav skupinu resp. clena skupiny */
+            add_group(gaddr,incoming_port);
+
+            pthread_mutex_unlock(&mutex_igmp);
         }
 
 
-        /* preposli paket na rozhranie querieru */
-        send_unicast(packet,header,igmp_querier_port);
 
-
-        /* pri genral query treba preposlat paket aj na rozhrania ostatnych hostov */
-        pthread_mutex_lock(&mutex_igmp);
-        struct igmp_group_table *group = find_group(gaddr);
-        pthread_mutex_unlock(&mutex_igmp);
-
-
-        /* Zisti port a group adresu a uloz do group_table */
-        pthread_mutex_lock(&mutex_igmp);
-
-        /* vloz novu alebo uprav skupinu resp. clena skupiny */
-        add_group(gaddr,incoming_port);
-
-        pthread_mutex_unlock(&mutex_igmp);
 
         /* TREBA ZISTIT CI TREBA PREPOSIELAT AJ OSTATNYM CLENOM SKUPINY
         int i;
@@ -779,7 +826,7 @@ void print_igmp_table(){
         }
     }
     pthread_mutex_unlock(&mutex_igmp);
-    printf("-----------------------------------------\n");
+    printf("----------------------------------------\n");
 }
 
 /** Vypise vsetkych clenov igmp multicast skupiny */

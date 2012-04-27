@@ -4,7 +4,7 @@
 #include "cam_table.h"
 
 #define PROMISCUOUS_MODE 1
-#define DEFAULT_PORTS_COUNT 10  //pouziva sa pri dynamickom alokovani pamati pre thready
+#define DEFAULT_PORTS_COUNT 15  //pouziva sa pri dynamickom alokovani pamati pre thready
 #define MAXBYTES2CAPTURE 2048
 
 
@@ -17,6 +17,7 @@ struct stat_table{
     unsigned recv_frames;
     pcap_t *handler;        //taky mensi hack, uchavava deskriptor pre rozhranie
 };
+
 struct stat_table *stat_table_t[HASH_LENGTH];
 static char errbuf[PCAP_ERRBUF_SIZE];       //error buffer
 pthread_mutex_t mutex;

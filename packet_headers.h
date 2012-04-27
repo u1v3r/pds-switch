@@ -65,7 +65,9 @@ struct igmp_group_record {
 	u_int8_t	auxlen;		/* aux data length (must be zero)  */
 	u_int16_t	numsrc;		/* number of sources		   */
 	uint32_t	group;		/* group address		   */
-	//uint32_t	src[25];		/* source address list		   */
+	uint32_t	src[0];		/* source address list		   */
+	uint32_t    aux;
+	uint32_t    bordel;
 };
 
 struct igmpv3_report {
@@ -74,7 +76,7 @@ struct igmpv3_report {
 	u_int16_t	igmp_cksum;	/* IP-style checksum		   */
 	u_int16_t	igmp_reserved2;	/* reserved (set to zero)	   */
 	u_int16_t	igmp_grpnum;	/* number of group record	   */
-	struct igmp_group_record group_rec;
+	struct igmp_group_record group_rec[0];
 };
 
 #endif // PACKET_HEADERS_H_INCLUDED

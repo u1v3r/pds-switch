@@ -180,7 +180,7 @@ void print_cam_table(){
 
     }
     pthread_mutex_unlock(&mutex);
-    printf("------------------%i---------------------\n",pocet);
+    printf("------------------%i--------------------\n",pocet);
 
 }
 
@@ -197,6 +197,10 @@ void cam_table_age_checker(){
             printf("\n\nCam table age checking...\n\n");
         #endif
         pthread_mutex_lock(&mutex);
+
+        /* ked uz sme pri tom tak rovno skontroluj aj igmp tabulku */
+        igmp_table_check();
+
         for(i = 0; i < HASH_LENGTH; i++){
             /* preskoc  indexy bez zaznamu */
             if(cam_table_t[i] == NULL) continue;
